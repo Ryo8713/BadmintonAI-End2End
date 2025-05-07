@@ -1,0 +1,8 @@
+hyp = Hyp(
+    n_epochs=20,
+    lr=1e-3,
+    w_decay=0,
+    train_batch_size=64,
+)
+loss_fn = FocalLossWithLogits()
+loss_fn_val = FocalLossWithLogits(reduction='sum')
