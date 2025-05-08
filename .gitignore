@@ -1,10 +1,9 @@
 # video data
 *.mp4
 
-# rally clipping
-
 __pycache__/
 final_result/
 npy/
 videos/
+traj/
 

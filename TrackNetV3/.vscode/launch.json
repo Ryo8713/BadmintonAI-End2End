@@ -1,0 +1,39 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python Debugger: Current File",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Python Debugger: Train",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/train.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--epochs", "30",
+                "--batch_size", "4",
+                "--save_dir", "exp"
+            ]
+        },
+        {
+            "name": "Python Debugger: Predict",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/predict.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--video_file", "C:/MyResearch/mmpose/data/1_01_00.mp4",
+                "--model_file", "exp/model_best.pt",
+                "--save_dir", "pred_result"
+            ]
+        },
+    ]
+}
