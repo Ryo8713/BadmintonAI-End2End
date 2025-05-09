@@ -8,6 +8,5 @@
     - A folder `videos` containing rally videos will be created in the root directory of the project.
 - [x] Court detection
     - Results of `court.txt` and `court_image.png` will be stored in `court_detection/`.
-- [x] TrackNet
-    - The `traj/` folder.
-- [ ] Pose
+- [x] TrackNet & Pose
+    - The `clips/` folder.

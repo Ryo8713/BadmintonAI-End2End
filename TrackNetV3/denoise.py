@@ -4,7 +4,7 @@ import os
 
 def smooth(path: str, df: pd.DataFrame):
     #path = '41_predict.csv'
-    print("[TrackNet] Start denosing trajectory")
+    # print("[TrackNet] Start denosing trajectory")
     
     df = df.fillna(0)
 
@@ -81,10 +81,12 @@ def smooth(path: str, df: pd.DataFrame):
     af_dis = [0]*len(df)
 
     for i in range(1,len(df)-7):
+        '''
         if i==154:
             print(df.iloc[i:i+7])
             print(vis2[i:i+7])
             print('sum(vis2[i:i+7]) : {}'.format(sum(vis2[i:i+7])))
+        '''
         if sum(vis2[i:i+7])>=2:
             vis_window = np.array(vis2[i:i+7])
             loc = np.where(vis_window==1)
@@ -185,7 +187,7 @@ def smooth(path: str, df: pd.DataFrame):
     for i in range(len(vis3)):
         if af_dis[i]!=0 and bf_dis[i]!=0 and af_dis[i]<5 and bf_dis[i]<5:
             if sum(vis3[i-7:i])!=7: # front side compensate
-                print(vis3[i-7:i])
+                # print(vis3[i-7:i])
                 for k in range(5):
                     if vis3[i-7+k:i-4+k]==[1,0,1]:
                         x_ev = (x_sm[i-7+k]+x_sm[i-5+k])/2
@@ -233,7 +235,7 @@ def smooth(path: str, df: pd.DataFrame):
                         
         
             if sum(vis3[i+1:i+8])!=7: # back side compensate
-                print(vis3[i+1:i+8])
+                # print(vis3[i+1:i+8])
                 for k in range(5):
                     if vis3[i+1+k:i+4+k]==[1,0,1]:
                         x_ev = (x_sm[i+1+k]+x_sm[i+3+k])/2
@@ -407,7 +409,7 @@ def smooth(path: str, df: pd.DataFrame):
 
         elif mis2[i] ==1:
             miss_point = i
-            print(len(mis1_X))
+            # print(len(mis1_X))
             if mis1_X[miss_point-3]!=0 and mis1_X[miss_point-2]!=0 and mis1_X[miss_point-1]!=0 and mis1_X[miss_point+2]!=0 and mis1_X[miss_point+3]!=0 and mis1_X[miss_point+4]!=0:
                 num_X = [mis1_X[miss_point-3],mis1_X[miss_point-2],mis1_X[miss_point-1],mis1_X[miss_point+2],mis1_X[miss_point+3],mis1_X[miss_point+4]]
                 num_y = [mis1_y[miss_point-3],mis1_y[miss_point-2],mis1_y[miss_point-1],mis1_y[miss_point+2],mis1_y[miss_point+3],mis1_y[miss_point+4]]
@@ -551,6 +553,3 @@ def smooth(path: str, df: pd.DataFrame):
     df['Y'] = mis5_y
 
     df.to_csv(path, index=False)
-
-def denoise(out_csv_file):
-    smooth(out_csv_file)

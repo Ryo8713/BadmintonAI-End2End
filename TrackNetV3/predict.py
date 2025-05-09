@@ -9,7 +9,7 @@ from pathlib import Path
 from TrackNetV3.utils import *
 
 
-def predict_traj(video_file: Path, save_dir: str):
+def predict_traj(video_file: Path, save_dir: str, verbose = False):
 
     model_file = 'TrackNetV3/exp/model_best.pt'
     num_frame = 3
@@ -61,7 +61,8 @@ def predict_traj(video_file: Path, save_dir: str):
     out = cv2.VideoWriter(out_video_file, fourcc, fps, (w, h))
 
     while success:
-        print(f'Number of sampled frames: {frame_count}')
+        if verbose:
+            print(f'Number of sampled frames: {frame_count}')
         # Sample frames to form input sequence
         frame_queue = []
         for _ in range(num_frame*batch_size):
@@ -80,7 +81,10 @@ def predict_traj(video_file: Path, save_dir: str):
             frame_queue = []
             # Record the length of remain frames
             num_final_frame = len(frame_queue) +1
-            print(num_final_frame)
+
+            if verbose:
+                print(num_final_frame)
+
             # Adjust the sample timestampe of cap
             frame_count = frame_count - num_frame*batch_size
             cap.set(cv2.CAP_PROP_POS_FRAMES, frame_count)
@@ -108,7 +112,8 @@ def predict_traj(video_file: Path, save_dir: str):
         
         for i in range(h_pred.shape[0]):
             if num_final_frame > 0 and i < (num_frame*batch_size - num_final_frame-1):
-                print('aaa')
+                if verbose:
+                    print('aaa')
                 # Special case of last incomplete mini batch
                 # Igore the frame which is already written to the output video
                 continue 
