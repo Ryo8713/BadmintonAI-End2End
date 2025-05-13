@@ -93,7 +93,12 @@ def video_clipping(video_path, name, fps=30):
 
         cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)  
 
-        clip_filename = output_dir / f'clip_{i+1}.mp4'
+        clip_dir = output_dir / f'clip_{i+1}'
+
+        if not clip_dir.is_dir():
+            clip_dir.mkdir(parents=True, exist_ok=True)
+
+        clip_filename = clip_dir / f'clip_{i+1}.mp4'
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')  
         out = cv2.VideoWriter(str(clip_filename), fourcc, fps, (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))))
 
