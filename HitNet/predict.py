@@ -25,6 +25,7 @@ def predict(rally_output_dir, device=None, threshold=0.67):
 
     for clip in os.listdir(rally_output_dir):
         clip_dir = f'{rally_output_dir}/{clip}/'
+        print(f"\n[HitNet] Processing {clip} ...")
         X = make_data_for_predict(clip_dir, clip)
         
         X_tensor = torch.tensor(X, dtype=torch.float32)
@@ -40,4 +41,5 @@ def predict(rally_output_dir, device=None, threshold=0.67):
                 all_preds.extend(preds.cpu().numpy())
 
         hits = pd.DataFrame(all_preds, columns=['hit'])
+        hits.index.name = 'frame'
         hits.to_csv(f'{clip_dir}/{clip}_hits.csv')
