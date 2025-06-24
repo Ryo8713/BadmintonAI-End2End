@@ -16,23 +16,24 @@ from TemPose.generate_npy import process_clip
 from TemPose.predict_by_hit import per_hit_predict
 from TemPose.TemPoseII import TemPoseII_TF
 
-def main():
-    # ——— 1. 配置路径 ——————————————————————————————————————————————
-    video_path = Path('sample.mp4')
-    name = video_path.stem
-    RALLY_OUTPUT = Path('videos') / name
+from team_classfier.sport_player_team_classifier import predict_teams, train_yolo
 
+def main():
+    # ——— 1. Path Setting ——————————————————————————————————————————————
+    video_path = Path('sample_2.mp4')
+    name = video_path.stem
+    RALLY_OUTPUT_DIR = Path('videos') / name
+    
     COURT_DETECTION_PATH = 'court_detection/court-detection.exe'
     COURT_OUTPUT         = 'court_detection/court.txt'
     COURT_IMAGE          = 'court_detection/court_image.png'
 
-    '''
-    # ——— 2. Rally 切片 ——————————————————————————————————————————————
+    # ——— 2. Rally Clipping ———————————————————————————————————————————————————
     print("\n[Message] Start rally clipping\n")
     timepoints_clipping(video_path)
     print("[Message] Rally clipping finished\n")
 
-    # ——— 3. Court Detection ——————————————————————————————————————————
+    # ——— 3. Court Detection ——————————————————————————————————————————————————
     print("\n[Message] Start court detection\n")
     subprocess.run(
         [COURT_DETECTION_PATH, str(video_path), COURT_OUTPUT, COURT_IMAGE, "10"],
@@ -40,10 +41,10 @@ def main():
     )
     print("[Message] Court detection finished\n")
 
-    # ——— 4. 轨迹 & 姿态 预测 ————————————————————————————————————————
+    # ——— 4. Trajectory & Pose Prediction —————————————————————————————————————
     print("\n[Message] Start trajectory & pose prediction\n")
-    for clip in os.listdir(RALLY_OUTPUT):
-        clip_dir  = RALLY_OUTPUT / clip
+    for clip in os.listdir(RALLY_OUTPUT_DIR):
+        clip_dir  = RALLY_OUTPUT_DIR / clip
         clip_path = clip_dir / f"{clip}.mp4"
 
         traj_csv = predict_traj(clip_path, str(clip_dir))
@@ -53,13 +54,13 @@ def main():
         process_pose(clip_path, str(clip_dir), COURT_OUTPUT)
     print("[Message] Trajectory & pose prediction finished\n")
 
-    # ——— 5. HitNet 击球检测 ————————————————————————————————————————
+    # ——— 5. HitNet ————————————————————————————————————————————————————————————
     print("\n[Message] Start hit detection\n")
-    hitnet_detect(RALLY_OUTPUT)
+    hitnet_detect(RALLY_OUTPUT_DIR)
     print("[Message] Hit detection finished\n")
-    '''
-    # ——— 6. TemPose 每击球分类 ——————————————————————————————————————
-    # 6.1 载入模型配置 & 权重
+
+    # ——— 6. TemPose  ——————————————————————————————————————
+    # 6.1 load model config
     cfg = yaml.safe_load(Path("TemPose/config/config.yml").read_text())
     cfg_model = cfg["model"]
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -78,20 +79,28 @@ def main():
     model.load_state_dict(ck["model_state_dict"])
     model.eval()
 
-    # 6.2 对每个 clip 生成 .npy 并对每次击球做预测
-    for clip in os.listdir(RALLY_OUTPUT):
-        clip_dir = RALLY_OUTPUT / clip
+    # 6.2 predict for each hit
+    for clip in os.listdir(RALLY_OUTPUT_DIR):
+        clip_dir = RALLY_OUTPUT_DIR / clip
         print(f"\n[TemPose] Processing {clip} …")
 
-        # ① 生成 npy 输入
+        # generate npy
         process_clip(clip, str(clip_dir), T_max=cfg_model["sequence_length"])
 
-        # ② 读取击球时刻并逐一预测
+        # predict stroke for each hit
         hit_csv = clip_dir / f"{clip}_hits.csv"
         if hit_csv.exists():
             per_hit_predict(model, clip_dir, hit_csv, cfg, device)
         else:
             print(f"[WARN] {hit_csv} not found, skipping per-hit prediction.")
+
+    # ——— 7. Team Classification ——————————————————————————————————————
+    classifier = train_yolo(video_path)
+    for clip in os.listdir(RALLY_OUTPUT_DIR):
+        clip_dir = RALLY_OUTPUT_DIR / clip
+        print(f"\n[Team] Processing {clip} …")
+        predict_teams(clip_dir, clip, classifier)
+
 
     print("\n[All done]")
 

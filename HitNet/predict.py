@@ -41,5 +41,6 @@ def predict(rally_output_dir, device=None, threshold=0.67):
                 all_preds.extend(preds.cpu().numpy())
 
         hits = pd.DataFrame(all_preds, columns=['hit'])
-        hits.index.name = 'frame'
-        hits.to_csv(f'{clip_dir}/{clip}_hits.csv')
+        hits['frame'] = hits.index  # 把 index 存進欄位
+        hits = hits[['frame', 'hit']]  # 調整欄位順序
+        hits.to_csv(f'{clip_dir}/{clip}_hits.csv', index=False)
