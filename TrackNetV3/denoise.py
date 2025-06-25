@@ -140,7 +140,7 @@ def smooth(path: str, df: pd.DataFrame):
                     x_test_2nd[i:i+3]=[0,0,0]
                     y_test_2nd[i:i+3]=[0,0,0]
                     abnormal2[i:i+3]=['2bias3','2bias3','2bias3']
-            elif bf_dis[i+3]>30 and vis2[i+1:i+4]==[1,1,1]:
+            elif (i+3 < len(bf_dis) and i+4 <= len(vis2) and bf_dis[i+3] > 30 and vis2[i+1:i+4] == [1,1,1]):
                 if af_dis[i+1]<30 and af_dis[i+2]<30 and af_dis[i+3]<30:
                     x_test_2nd[i:i+4]=[0,0,0,0]
                     y_test_2nd[i:i+4]=[0,0,0,0]

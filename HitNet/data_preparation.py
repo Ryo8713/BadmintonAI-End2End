@@ -105,6 +105,14 @@ def process(basedir: str, rally: str, for_train = False):
     bottom_player = resample(bottom_player.values, speed)
     top_player = resample(top_player.values, speed)
 
+    min_len = min(len(trajectory.X), len(bottom_player), len(top_player))
+
+    trajectory.X = trajectory.X[:min_len]
+    trajectory.Y = trajectory.Y[:min_len]
+    bottom_player = bottom_player[:min_len]
+    top_player = top_player[:min_len]
+
+
     for i in range(num_consec):
         end = len(trajectory.X)-num_consec+i+1
         x_bird = np.array(list(zip(trajectory.X[i:end], trajectory.Y[i:end])))
