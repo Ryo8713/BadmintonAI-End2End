@@ -37,6 +37,8 @@ def per_hit_predict(model, clip_dir: Path, hit_csv: Path, cfg: dict, device: tor
 
     print(f"Found {len(hit_frames)} hits, window size {T}")
 
+    events = []
+
     for i, hf in enumerate(hit_frames):
         # slice_and_pad: 从 hf 向前/后截 T 帧并 pad 到固定长度
         seg_hp  = slice_and_pad(hp[0].cpu().numpy(),  hf, T)[None]   # (1, T, 2, J+B, 2)
@@ -54,4 +56,8 @@ def per_hit_predict(model, clip_dir: Path, hit_csv: Path, cfg: dict, device: tor
 
         with torch.no_grad():
             pred_idx = model.predict(x, p, torch.tensor([hf], device=device))
-        print(f"Hit {i:02d} @frame {hf:04d}: → [{pred_idx.item()}] {stroke_names[pred_idx.item()]}")
+        name = stroke_names[pred_idx.item()]
+        #print(f"Hit {i:02d} @frame {hf:04d}: → [{pred_idx.item()}] {name}")
+        events.append((hf, name))
+
+    return events
