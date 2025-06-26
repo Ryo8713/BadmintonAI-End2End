@@ -10,6 +10,7 @@ from sports.common.team import TeamClassifier
 VIDEO_PATH = r"sample.mp4"
 OUTPUT_VIDEO_PATH = r"box.mp4"
 CSV_PATH = r"box.csv"
+COURT_FILE = r"court_detection/court.txt"
 FRAME_STRIDE = 30
 DEVICE = "cuda"
 FRAME_LIMIT = None  # 若要跑完整影片就設為 None
@@ -74,7 +75,7 @@ def train_yolo(full_video_path):
     classifier = TeamClassifier(device=DEVICE)
 
     # Consider use the exact corner coordinates of each video
-    # read_corner_set_roi() 
+    read_corner_set_roi(COURT_FILE) 
 
     crops = get_player_crops(model, full_video_path, stride=FRAME_STRIDE)
     print(f"收集到 {len(crops)} 張人物圖像")

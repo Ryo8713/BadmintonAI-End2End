@@ -20,7 +20,7 @@ from team_classfier.sport_player_team_classifier import predict_teams, train_yol
 
 def main():
     # ——— 1. Path Setting ——————————————————————————————————————————————
-    video_path = Path('sample_2.mp4')
+    video_path = Path('match1.mp4')
     name = video_path.stem
     RALLY_OUTPUT_DIR = Path('videos') / name
     
@@ -28,6 +28,7 @@ def main():
     COURT_OUTPUT         = 'court_detection/court.txt'
     COURT_IMAGE          = 'court_detection/court_image.png'
 
+    '''
     # ——— 2. Rally Clipping ———————————————————————————————————————————————————
     print("\n[Message] Start rally clipping\n")
     timepoints_clipping(video_path)
@@ -40,6 +41,7 @@ def main():
         capture_output=True, text=True
     )
     print("[Message] Court detection finished\n")
+    '''
 
     # ——— 4. Trajectory & Pose Prediction —————————————————————————————————————
     print("\n[Message] Start trajectory & pose prediction\n")
@@ -49,7 +51,7 @@ def main():
 
         traj_csv = predict_traj(clip_path, str(clip_dir))
         df       = pd.read_csv(traj_csv, encoding="utf-8")
-        smooth(traj_csv, df)
+        # smooth(traj_csv, df)
 
         process_pose(clip_path, str(clip_dir), COURT_OUTPUT)
     print("[Message] Trajectory & pose prediction finished\n")
