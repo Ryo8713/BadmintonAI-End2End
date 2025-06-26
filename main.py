@@ -192,7 +192,6 @@ def main():
         capture_output=True, text=True
     )
     print("[Message] Court detection finished\n")
-    '''
 
     # ——— 4. Trajectory & Pose Prediction —————————————————————————————————————
     print("\n[Message] Start trajectory & pose prediction\n")
