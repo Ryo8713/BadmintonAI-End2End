@@ -55,13 +55,15 @@ def run_inference(infer_video_path: Path, model_serial_no: int = 3):
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
     weight_path = Path('rally_clipping/weight')/f'img_md{model_serial_no}.pt'
-    # infer_video_path = Path("C:/MyResearch/broadcast_video/5 green_women - YONEX French Open 2024 Tai Tzu Ying (TPE) [3] vs. Aya Ohori (JPN) QF.mp4")
-
     npy_dir = Path('rally_clipping/npy')
     if not npy_dir.is_dir():
         npy_dir.mkdir()
     save_path = npy_dir/(str(infer_video_path.stem)+'.npy')
 
+    if save_path.exists():
+        print(f"File {save_path} already exists. Skipping inference.")
+        return
+    
     data = RallyImgDataset_infer(str(infer_video_path))
     fps = data.video.fps
     loader = DataLoader(data, batch_size=512, pin_memory=torch.cuda.is_available())

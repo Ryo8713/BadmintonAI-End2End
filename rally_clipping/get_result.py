@@ -128,17 +128,23 @@ def timepoints_clipping(video_path: Path, fps = 30):
     name = video_path.stem
 
     print(f'Video name: {name}')
+    
+    prediction_dir = Path('rally_clipping/final_result')
+    if not prediction_dir.is_dir():
+        prediction_dir.mkdir()
+    save_path = prediction_dir/(str(name)+'.txt')
+    
+    # Skip if save_path already exists
+    if save_path.exists():
+        print(f"File {save_path} already exists. Skipping processing.")
+        return
+    
     run_inference(video_path)
 
     npy_dir = Path('rally_clipping/npy')
     npy_file = npy_dir/(str(name)+'.npy')
 
     print(f'File name: {npy_file}')
-
-    prediction_dir = Path('rally_clipping/final_result')
-    if not prediction_dir.is_dir():
-        prediction_dir.mkdir()
-    save_path = prediction_dir/(str(name)+'.txt')
 
     model_preds = np.load(str(npy_file))
 
