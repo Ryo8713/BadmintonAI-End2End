@@ -179,7 +179,7 @@ def main():
     COURT_DET_EXE = 'court_detection/court-detection.exe'
     COURT_OUTPUT  = 'court_detection/court.txt'
     COURT_IMAGE   = 'court_detection/court_image.png'
-    '''
+    
     # ——— 2. Rally clipping ——————————————————————————————————————————————
     print("\n[Message] Start rally clipping\n")
     timepoints_clipping(video_path)
@@ -205,7 +205,7 @@ def main():
 
         process_pose(clip_path, str(clip_dir), COURT_OUTPUT)
     print("[Message] Trajectory & pose prediction finished\n")
-    '''
+    
     # ——— 5. HitNet ————————————————————————————————————————
     print("\n[Message] Start hit detection\n")
     hitnet_detect(RALLY_OUTPUT_DIR)
