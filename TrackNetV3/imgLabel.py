@@ -1,6 +1,6 @@
 import os
 import cv2
-import sys, getopt
+import sys
 from parser1 import parser
 from utils_for_imgLabel import save_info, load_info, go2frame, show_image
 

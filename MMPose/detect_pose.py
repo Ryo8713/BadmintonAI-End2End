@@ -4,7 +4,7 @@ import os
 import argparse
 import numpy as np
 from mmpose.apis import MMPoseInferencer
-from mayavi import mlab
+# from mayavi import mlab
 from tqdm import tqdm
 from pathlib import Path
 
@@ -41,6 +41,7 @@ def normalize_joints(
 
     return np.stack((x_normalized, y_normalized), axis=-1)
 
+'''
 
 def demo_human_2d_and_3d(img_path):
     inferencer_2d = MMPoseInferencer('human')
@@ -177,6 +178,8 @@ def demo_human_3d(img_path):
 
             # 顯示圖形
             mlab.show(stop=True)
+
+'''
 
 
 def test_bug(inferencer, p):
