@@ -34,24 +34,24 @@ def smooth(path: str, df: pd.DataFrame):
             abnormal[i]=0 
         elif i==len(pre_dif)-3:
             abnormal[i]=0
-        elif pre_dif[i] >= 100 and pre_dif[i+1] >= 100:
+        elif i+1 < len(pre_dif) and pre_dif[i] >= 100 and pre_dif[i+1] >= 100:
             if vis[i:i+2] == [1,1]:# and series[i:i+2] == [1,1]:
                 abnormal[i] ='bias1'
                 X_abn[i] = 0
                 y_abn[i] = 0
-        elif pre_dif[i] >= 100 and pre_dif[i+2] >= 100:
+        elif i+2 < len(pre_dif) and pre_dif[i] >= 100 and pre_dif[i+2] >= 100:
             if pre_dif[i+1]<dif_error:
                 if vis[i:i+3] == [1,1,1]:# and series[i:i+3] == [1,1,1]:
                     abnormal[i:i+2]=['bias2','bias2']
                     X_abn[i:i+2] = [0,0]
                     y_abn[i:i+2] = [0,0]
-        elif pre_dif[i] >= 100 and pre_dif[i+3] >= 100:
+        elif i+3 < len(pre_dif) and pre_dif[i] >= 100 and pre_dif[i+3] >= 100:
             if pre_dif[i+1]<dif_error and pre_dif[i+2]<dif_error:
                 if vis[i:i+4] == [1,1,1,1]:# and series[i:i+4] == [1,1,1,1]:
                     abnormal[i:i+3]=['bias3','bias3','bias3']
                     X_abn[i:i+3] = [0,0,0]
                     y_abn[i:i+3] = [0,0,0]
-        elif pre_dif[i] >= 100 and pre_dif[i+4] >= 100:
+        elif i+4 < len(pre_dif) and pre_dif[i] >= 100 and pre_dif[i+4] >= 100:
             if pre_dif[i+1]<dif_error and pre_dif[i+2]<dif_error and pre_dif[i+3]<dif_error:
                 if vis[i:i+5] == [1,1,1,1,1]:# and series[i:i+5] == [1,1,1,1,1]:
                     abnormal[i:i+4]=['bias4','bias4','bias4','bias4']

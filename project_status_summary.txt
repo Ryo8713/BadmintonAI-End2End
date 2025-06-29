@@ -1,0 +1,5 @@
+1.smooth() 常常報錯，主要是index out of range,但用smooth()的效果不錯
+2.剩下的問題需要有TemPose的model(seq_len = 30)測測看準不準才知道
+3.尚未測試1小時以上的比賽影片
+4.偶數的clips幾乎都是過場畫面，可在跑TrackNetV3和MMPose前篩選掉，節省時間
+5.針對clip的每個frame，比如用court_detect的方式判斷是否為過場畫面，減少執行時間

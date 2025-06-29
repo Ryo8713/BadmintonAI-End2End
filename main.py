@@ -172,7 +172,7 @@ def visualize_hits_in_video(video_path, timeline, output_path=None):
 
 def main():
     # ——— 1. Paths & config —————————————————————————————————————
-    video_path = Path('sample.mp4')
+    video_path = Path('sample1.mp4')
     name       = video_path.stem
     RALLY_OUTPUT_DIR = Path('videos') / name
 
@@ -188,7 +188,7 @@ def main():
     # ——— 3. Court Detection ——————————————————————————————————————————
     print("\n[Message] Start court detection\n")
     subprocess.run(
-        [COURT_DET_EXE, str(video_path), COURT_OUTPUT, COURT_IMAGE, "10"],
+        [COURT_DET_EXE, str(video_path), COURT_OUTPUT, COURT_IMAGE, "400"], 
         capture_output=True, text=True
     )
     print("[Message] Court detection finished\n")
@@ -202,6 +202,7 @@ def main():
         traj_csv = predict_traj(clip_path, str(clip_dir))
         df       = pd.read_csv(traj_csv, encoding="utf-8")
         # smooth(traj_csv, df)
+        #smooth(traj_csv, df)
 
         process_pose(clip_path, str(clip_dir), COURT_OUTPUT)
     print("[Message] Trajectory & pose prediction finished\n")
@@ -210,8 +211,15 @@ def main():
     print("\n[Message] Start hit detection\n")
     hitnet_detect(RALLY_OUTPUT_DIR)
     print("[Message] Hit detection finished\n")
+    
+    # ——— 6. Team Classification ——————————————————————————————————————
+    classifier = train_yolo(video_path)
+    for clip in os.listdir(RALLY_OUTPUT_DIR):
+        clip_dir = RALLY_OUTPUT_DIR / clip
+        print(f"\n[Team] Processing {clip} …")
+        predict_teams(clip_dir, clip, classifier)
 
-    # ——— 6. TemPose  ——————————————————————————————————————
+    # ——— 7. TemPose  ——————————————————————————————————————
     # load model config
     cfg = yaml.safe_load(Path("TemPose/config/config.yml").read_text())
     mcfg = cfg["model"]
@@ -253,22 +261,42 @@ def main():
 
         # accumulate
         video_file = clip_dir / f"{clip}.mp4"
+        team_file = Path(f"{clip}_teams.csv")
+        team_path = clip_dir / team_file
+
+        # Read team data and determine Top/Bottom mapping
+        if team_path.exists():
+            df_team = pd.read_csv(team_path)
+
+            # Assume y1 < y2 => player is on top (since y grows downward)
+            first_frame = df_team[df_team['frame'] == df_team['frame'].min()]
+            top_player = first_frame.loc[first_frame['y1'].idxmin(), 'player_id']
+            bottom_player = first_frame.loc[first_frame['y1'].idxmax(), 'player_id']
+        else:
+            print(f"[WARN] {team_path} not found; defaulting player0=Top, player1=Bottom")
+            top_player = 0
+            bottom_player = 1
+
         for frame_idx, stroke in events:
+            # Map Top_ / Bottom_ to Player0_ / Player1_
+            if stroke.startswith("Top_"):
+                true_player = top_player
+                stroke = stroke.replace("Top_", f"Player{top_player}_")
+            elif stroke.startswith("Bottom_"):
+                true_player = bottom_player
+                stroke = stroke.replace("Bottom_", f"Player{bottom_player}_")
+            else:
+                true_player = None  # Unknown role
+
             overall_counts[stroke] += 1
             ts = frame_to_timestamp(video_file, frame_idx, original_video_path=video_path)
             timeline.append({
                 "clip": clip,
                 "frame": frame_idx,
                 "timestamp": ts,
-                "stroke": stroke
+                "stroke": stroke,
+                "player_id": true_player
             })
-
-    # ——— 7. Team Classification ——————————————————————————————————————
-    classifier = train_yolo(video_path)
-    for clip in os.listdir(RALLY_OUTPUT_DIR):
-        clip_dir = RALLY_OUTPUT_DIR / clip
-        print(f"\n[Team] Processing {clip} …")
-        predict_teams(clip_dir, clip, classifier)
 
     # ——— 8. Summarize & print —————————————————————————————————————
     if not timeline:
