@@ -7,6 +7,7 @@ import pandas as pd
 from pathlib import Path
 import cv2
 from collections import Counter
+from mmpose.apis import MMPoseInferencer
 
 from rally_clipping.get_result import timepoints_clipping
 from TrackNetV3.predict       import predict_traj
@@ -172,7 +173,7 @@ def visualize_hits_in_video(video_path, timeline, output_path=None):
 
 def main():
     # ——— 1. Paths & config —————————————————————————————————————
-    video_path = Path('sample1.mp4')
+    video_path = Path('match1.mp4')
     name       = video_path.stem
     RALLY_OUTPUT_DIR = Path('videos') / name
 
@@ -180,6 +181,7 @@ def main():
     COURT_OUTPUT  = 'court_detection/court.txt'
     COURT_IMAGE   = 'court_detection/court_image.png'
     
+    '''
     # ——— 2. Rally clipping ——————————————————————————————————————————————
     print("\n[Message] Start rally clipping\n")
     timepoints_clipping(video_path)
@@ -192,9 +194,11 @@ def main():
         capture_output=True, text=True
     )
     print("[Message] Court detection finished\n")
-
+    '''
+    
     # ——— 4. Trajectory & Pose Prediction —————————————————————————————————————
     print("\n[Message] Start trajectory & pose prediction\n")
+    inferencer = MMPoseInferencer('human')
     for clip in os.listdir(RALLY_OUTPUT_DIR):
         clip_dir  = RALLY_OUTPUT_DIR / clip
         clip_path = clip_dir / f"{clip}.mp4"
@@ -202,9 +206,8 @@ def main():
         traj_csv = predict_traj(clip_path, str(clip_dir))
         df       = pd.read_csv(traj_csv, encoding="utf-8")
         # smooth(traj_csv, df)
-        #smooth(traj_csv, df)
 
-        process_pose(clip_path, str(clip_dir), COURT_OUTPUT)
+        process_pose(inferencer, clip_path, str(clip_dir), COURT_OUTPUT)
     print("[Message] Trajectory & pose prediction finished\n")
     
     # ——— 5. HitNet ————————————————————————————————————————

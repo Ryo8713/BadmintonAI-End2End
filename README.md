@@ -1,4 +1,6 @@
-# 羽毛球擊球類型辨識端到端系統
+# Badminton AI End-to-End System
+
+> Python version: 3.11.9
 
 ## Installation
 
@@ -6,7 +8,14 @@ It's better to use virtual environment to install the required packages and run 
 ```bash
 python -m venv venv
 venv/Scripts/activate    # for Windows
-pip install requirements -r requirements.txt
+pip install -r requirements.txt
+```
+
+### Torch with CUDA
+
+To support torch with cuda, which is necessary:
+```bash
+pip install torch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0 --index-url https://download.pytorch.org/whl/cu118
 ```
 
 ### MMCV
@@ -29,25 +38,21 @@ Currently, the program can only process one video at one time. The result will b
 │   │── /clip_1
 │   │   │── clip_1_ball.csv                  # trajectory
 │   │   │── clip_1_bottom.csv                # pose of bottom player
+│   │   │── clip_1_hits.csv                  # hit frame (binary)
 │   │   │── clip_1_pred.mp4                  # visualization of pose
+│   │   │── clip_1_teams.csv                 # team classification
+│   │   │── clip_1_teams.mp4                 # team classification video
 │   │   │── clip_1_top.csv                   # pose of top player
 │   │   │── clip_1_visualized_output.csv     # visualization of trajectory
 │   │   │── clip_1.mp4                       # original video
-│   │   │── clip_1_hits.mp4                  # hit frame (binary)
+│   │   │── *.npy                            # other files for TemPose
 |   |
 |   │── /clip_3 ...
 
 ```
 
-## Note
+## License Notice
 
-- 上次討論的那個過場畫面的問題還沒改。
-
-- 最後的 TemPose 還沒接上來，如果需要 homography matrix 的話在 `court_detection/court.txt` 裡面可以找到。
-
-- 在 TrackNet & mmpose 那個階段可能會要花一點時間跑，特別是在影片很多的情況下。
-
-- HitNet 現在有 0.86 的 F1-score，應該還行 ?
-
-- 有一個資料夾 `ai_badminton` 是來自 [monotrack](https://github.com/jhwang7628/monotrack) 開發的套件。
-
+This project includes components adapted from the [monotrack](https://github.com/jhwang7628/monotrack) repository by Adobe, under the Adobe Research License.  
+The usage is limited to non-commercial academic research, including undergraduate coursework.  
+See `ai_badminton/LICENSE_ADOBE.txt` for details.

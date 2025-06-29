@@ -252,9 +252,9 @@ def is_inside_court(foot_positions, court_polygon, threshold=30):
     # Check if inside OR within threshold distance
     return (dist_right >= -threshold or dist_left >= -threshold)
 
-def visualize_video_estimated(in_path, csv_output_dir='pose_data.csv', cap=None, court_corners=None):
+def visualize_video_estimated(inferencer, in_path, csv_output_dir='pose_data.csv', cap=None, court_corners=None):
     in_path = str(in_path)
-    inferencer = MMPoseInferencer('human')
+    # inferencer = MMPoseInferencer('human')
     result_generator = inferencer(in_path, csv_output_dir)
 
     video_name = os.path.splitext(os.path.basename(in_path))[0]
@@ -352,7 +352,7 @@ def visualize_video_estimated(in_path, csv_output_dir='pose_data.csv', cap=None,
     save_player_keypoints(bottom_player_data, bottom_file)
     save_player_keypoints(top_player_data, top_file)  
 
-def process_pose(video_path, csv_output_dir, court_file):
+def process_pose(inferencer, video_path, csv_output_dir, court_file):
 
     # Read court corners
     court_corners = read_court_corners(court_file)
@@ -362,6 +362,7 @@ def process_pose(video_path, csv_output_dir, court_file):
         print("Error: Could not open video.")
     else:
         visualize_video_estimated(
+            inferencer=inferencer,
             in_path=video_path,
             csv_output_dir = csv_output_dir,
             cap=cap,

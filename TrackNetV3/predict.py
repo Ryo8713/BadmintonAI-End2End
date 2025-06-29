@@ -14,6 +14,7 @@ def predict_traj(video_file: Path, save_dir: str, verbose = False):
     model_file = 'TrackNetV3/exp/model_best.pt'
     num_frame = 3
     batch_size = 1
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     video_name = video_file.stem
     video_format = video_file.suffix.lstrip('.')  # 'mp4'
@@ -22,7 +23,7 @@ def predict_traj(video_file: Path, save_dir: str, verbose = False):
 
     print("Video name:", video_name)
 
-    checkpoint = torch.load(model_file, weights_only=True)
+    checkpoint = torch.load(model_file, weights_only=True, map_location=device)
     param_dict = checkpoint['param_dict']
     model_name = param_dict['model_name']
     num_frame = param_dict['num_frame']
