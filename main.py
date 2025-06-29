@@ -201,6 +201,7 @@ def main():
 
         traj_csv = predict_traj(clip_path, str(clip_dir))
         df       = pd.read_csv(traj_csv, encoding="utf-8")
+        # smooth(traj_csv, df)
         #smooth(traj_csv, df)
 
         process_pose(clip_path, str(clip_dir), COURT_OUTPUT)

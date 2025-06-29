@@ -82,7 +82,7 @@ def video_clipping(video_path, name, fps=30):
 
     clips = []
     pbar = tqdm(total=len(time_points)-1, desc = 'Clipping Rallies')
-    for i in range(len(time_points)-1):
+    for i in range(0, len(time_points)-1, 2):
         start_time = time_points[i].strip()
         start_frame = time_to_frame(start_time)
         end_time = time_points[i + 1].strip()

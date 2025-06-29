@@ -1,20 +1,28 @@
 # 羽毛球擊球類型辨識端到端系統
 
-我這裡的套件
+## Installation
+
+It's better to use virtual environment to install the required packages and run the program.
+```bash
+python -m venv venv
+venv/Scripts/activate    # for Windows
+pip install requirements -r requirements.txt
 ```
-mmpose      1.3.2
-numpy       1.26.4
-pandas      2.2.3
-sckit-learn 1.5.2
-torch       2.1.0+cu118
+
+### MMCV
+
+We recommend to use `openmim` (which is already included in `requirements.txt`) to install `mmcv`. Run the following command:
+```bash
+mim install mmcv==2.1.0
 ```
+
 ## Usage
 
-在 `main.py` 把這行改成影片的路徑，然後執行就可以了。
+Modify `sample.mp4` to your own video path in `main.py`:
 ```py
 video_path = Path('sample.mp4')
 ```
-目前只能一次處理一個影片，最後的結果會存在 `videos/`，以 `sample.mp4` 為例，程式跑完之後資料夾可能會長這樣
+Currently, the program can only process one video at one time. The result will be store in the `videos/` folder. Take `sample.mp4` as example, the organization of folder may look like:
 ```
 /videos
 │── /sample               
@@ -27,7 +35,7 @@ video_path = Path('sample.mp4')
 │   │   │── clip_1.mp4                       # original video
 │   │   │── clip_1_hits.mp4                  # hit frame (binary)
 |   |
-|   │── /clip_2 ...
+|   │── /clip_3 ...
 
 ```
 

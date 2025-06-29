@@ -1,13 +1,15 @@
+# Some functions in this file are adapted from ai_badminton (Adobe Research)
+# Original source: https://github.com/jhwang7628/monotrack/blob/main/modified-tracknet/train-hitnet.ipynb
+# Licensed under the Adobe Research License - for non-commercial research use only.
+
 import os
 import sys
 import cv2
 import pandas as pd
 import numpy as np
-from sklearn.preprocessing import MinMaxScaler, StandardScaler, minmax_scale
-from ai_badminton.pose import Pose, read_player_poses, process_pose_file
+from skimage.transform import resize
+from ai_badminton.pose import read_player_poses
 from ai_badminton.trajectory import Trajectory
-
-from HitNet.utils import resample
 
 num_consec = 12 
 left_window = 6
@@ -67,7 +69,18 @@ def fetch_data(basedir: str, rally: str, for_train = False):
 
     return data_dict
 
-
+def resample(series, s):
+    flatten = False
+    if len(series.shape) == 1:
+        series.resize((series.shape[0], 1))
+        series = series.astype('float64')
+        flatten = True
+    series = resize(
+        series, (int(s * series.shape[0]), series.shape[1]),
+    )
+    if flatten:
+        series = series.flatten()
+    return series  
 
 def process(basedir: str, rally: str, for_train = False):
     '''

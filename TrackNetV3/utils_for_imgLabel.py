@@ -230,9 +230,9 @@ def compute_acc(evaluation):
     """
     (TP, TN, FP1, FP2, FN) = evaluation
     try:
-	    accuracy = (TP + TN) / (TP + TN + FP1 + FP2 + FN)
+        accuracy = (TP + TN) / (TP + TN + FP1 + FP2 + FN)
     except:
-	    accuracy = 0
+        accuracy = 0
     try:
         precision = TP / (TP + FP1 + FP2)
     except:
