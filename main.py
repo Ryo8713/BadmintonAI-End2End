@@ -181,7 +181,6 @@ def main():
     COURT_OUTPUT  = 'court_detection/court.txt'
     COURT_IMAGE   = 'court_detection/court_image.png'
     
-    '''
     # ——— 2. Rally clipping ——————————————————————————————————————————————
     print("\n[Message] Start rally clipping\n")
     timepoints_clipping(video_path)
@@ -194,7 +193,6 @@ def main():
         capture_output=True, text=True
     )
     print("[Message] Court detection finished\n")
-    '''
     
     # ——— 4. Trajectory & Pose Prediction —————————————————————————————————————
     print("\n[Message] Start trajectory & pose prediction\n")
