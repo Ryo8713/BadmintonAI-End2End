@@ -1,6 +1,6 @@
 # Badminton AI End-to-End System
 
-> Python version: 3.11.9
+> My Python version: 3.11.9
 
 ## Installation
 

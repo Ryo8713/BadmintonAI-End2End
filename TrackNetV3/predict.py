@@ -24,7 +24,6 @@ def predict_traj(video_file: Path, save_dir: str, model, verbose = False):
 
     num_frame = 3
     batch_size = 4
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     video_name = video_file.stem
     video_format = video_file.suffix.lstrip('.')  # 'mp4'
@@ -59,6 +58,12 @@ def predict_traj(video_file: Path, save_dir: str, model, verbose = False):
     ratio = h / HEIGHT
 
     out = cv2.VideoWriter(out_video_file, fourcc, fps, (w, h))
+
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    if total_frames < num_frame:
+        print(f"[Skip] {video_name} has only {total_frames} frames (need at least {num_frame})")
+        success = False
+
 
     while success:
         if verbose:
@@ -98,6 +103,11 @@ def predict_traj(video_file: Path, save_dir: str, model, verbose = False):
                     frame_queue.append(frame)
             if len(frame_queue) % num_frame != 0:
                 continue
+
+        if len(frame_queue) < num_frame:
+            if verbose:
+                print(f"[Warning] Frame queue too short ({len(frame_queue)}), skipping...")
+            break
         
         x = get_frame_unit(frame_queue, num_frame)
         
@@ -129,6 +139,7 @@ def predict_traj(video_file: Path, save_dir: str, model, verbose = False):
                     cv2.circle(img, (cx_pred, cy_pred), 5, (0, 0, 255), -1)
                 out.write(img)
 
+    cap.release()
     out.release()
     print(f'[TrackNet] {video_name} done.')
 

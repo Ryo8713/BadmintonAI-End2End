@@ -35,6 +35,7 @@ def main():
 
     logs = {}    # for recording execution time
     
+    '''
     # ——— 2. Rally clipping ——————————————————————————————————————————————
     print("\n[Message] Start rally clipping\n")
     recording_execution_time(logs, "Start Rally Clipping")
@@ -51,7 +52,7 @@ def main():
     )
     print("[Message] Court detection finished\n")
     recording_execution_time(logs, "End Court Detection")
-    
+    '''
     # ——— 4. Trajectory & Pose Prediction —————————————————————————————————————
     print("\n[Message] Start trajectory & pose prediction\n")
     recording_execution_time(logs, "Start Trajectory & Pose Prediction")

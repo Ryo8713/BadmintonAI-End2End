@@ -43,7 +43,7 @@ def read_corner_set_roi(file_path):
 def box_overlaps_roi(x1, y1, x2, y2):
     return not (x2 < ROI_X1 or x1 > ROI_X2 or y2 < ROI_Y1 or y1 > ROI_Y2)
 
-def get_player_crops(model, video_path, stride=60):
+def get_player_crops(model, video_path, stride=30):
     crops = []
     frame_gen = sv.get_video_frames_generator(source_path=video_path, stride=stride)
     for idx, frame in enumerate(frame_gen):
