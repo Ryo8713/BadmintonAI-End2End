@@ -111,7 +111,7 @@ def video_clipping(video_path, name, fps=30):
         out.release()
 
         clips.append(str(clip_filename))
-        pbar.update(1)
+        pbar.update(2)
 
     cap.release()
     pbar.close()

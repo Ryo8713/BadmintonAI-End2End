@@ -71,8 +71,8 @@ def draw_boxes(frame, detections, team_ids):
     return frame
 
 def train_yolo(full_video_path):
-    model = YOLO("yolov8s.pt").to(DEVICE)
-    classifier = TeamClassifier(device=DEVICE)
+    model = YOLO("team_classifier/yolov8s.pt").to(DEVICE)
+    classifier = TeamClassifier(device=DEVICE, batch_size=256)
 
     # Consider use the exact corner coordinates of each video
     read_corner_set_roi(COURT_FILE) 
@@ -96,7 +96,7 @@ def predict_teams(clip_dir, clip, classifier):
     print("[3] 訓練 TeamClassifier...")
     classifier.fit(crops)
     '''
-    model = YOLO("yolov8s.pt").to(DEVICE)
+    model = YOLO("team_classifier/yolov8s.pt").to(DEVICE)
 
     video_path = f'{clip_dir}/{clip}.mp4'
     output_video_path = f'{clip_dir}/{clip}_teams.mp4'

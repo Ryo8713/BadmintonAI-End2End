@@ -239,8 +239,6 @@ def read_court_corners(file_path):
         print("Error: Could not read all 4 court corners.")
         return np.array(corners, dtype=np.int32)
 
-
-
 def is_inside_court(foot_positions, court_polygon, threshold=30):
     """Check if a player is inside the court based on their foot positions."""
     right_heel, left_heel = foot_positions
@@ -255,13 +253,24 @@ def is_inside_court(foot_positions, court_polygon, threshold=30):
 def visualize_video_estimated(inferencer, in_path, csv_output_dir='pose_data.csv', cap=None, court_corners=None):
     in_path = str(in_path)
     # inferencer = MMPoseInferencer('human')
-    result_generator = inferencer(in_path, csv_output_dir)
 
     video_name = os.path.splitext(os.path.basename(in_path))[0]
     os.makedirs(csv_output_dir, exist_ok=True)
     output_video_path = os.path.join(csv_output_dir, f"{video_name}_visualized_output.mp4")
 
-    #Get video properties
+    # Read all frames from the video
+    frames = []
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+        frames.append(frame)
+
+    if len(frames) == 0:
+        print("Error: No frames read from the video.")
+        return
+
+    # Get video properties
     fps = int(cap.get(cv2.CAP_PROP_FPS))
     frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
@@ -270,75 +279,57 @@ def visualize_video_estimated(inferencer, in_path, csv_output_dir='pose_data.csv
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
     out_video = cv2.VideoWriter(output_video_path, fourcc, fps, (frame_width, frame_height))
 
+    result_generator = inferencer(frames, show=False)
+
     # Data for CSVs
     bottom_player_data = []
     top_player_data = []
 
     # Process each frame
-    for frame_idx, result in enumerate(result_generator):
-        ret, frame = cap.read()
-        if not ret:
-            print(f"Frame {frame_idx}: Could not read frame, outputting null frame...")
-            null_frame = np.zeros((frame_height, frame_width, 3), dtype=np.uint8)
-            out_video.write(null_frame)
-            continue
+    for frame_idx, (result, frame) in enumerate(tqdm(zip(result_generator, frames), total=len(frames), desc=f'Processing {video_name}')):
 
-        predictions = result['predictions'][0] 
-        pred_instances = predictions.pred_instances
-
-        # Get keypoints for all detected people
-        keypoints_list = pred_instances.keypoints
+        people = result['predictions'][0]  # the list of dict of 1 person
 
         players = []
-        for i in range(len(pred_instances.bboxes)):
-            keypoints = keypoints_list[i]  # Keypoints for the i-th person
+        for person in people:
+            keypoints = person['keypoints']
+            if len(keypoints) < 17:
+                continue  # 17 keypoints are required
 
-            # Store the player's foot position and keypoints
+            # Extract keypoints
             players.append({
-                'foot_position': (keypoints[15], keypoints[16]),  # Store both heels
+                'foot_position': (keypoints[15], keypoints[16]),  # (左腳後跟, 右腳後跟)
                 'keypoints': keypoints
             })
 
-        # Filter players inside the court using their foot positions
+        # Check if there are at least two players inside the court
         players_inside_court = [
             player for player in players
             if is_inside_court(player['foot_position'], court_corners)
         ]
 
-        # ** Consideration **
+        # fill the frame with empty keypoints if less than 2 players
         if len(players_inside_court) < 2:
             out_video.write(frame)
-            bottom_player_data.append({'frame': frame_idx, 'keypoints': [(0, 0) for _ in range(17)]})
-            top_player_data.append({'frame': frame_idx, 'keypoints': [(0, 0) for _ in range(17)]})
+            bottom_player_data.append({'frame': frame_idx, 'keypoints': [(0, 0)] * 17})
+            top_player_data.append({'frame': frame_idx, 'keypoints': [(0, 0)] * 17})
             continue
+
+        # Sort players by their foot positions (y-coordinate) to find the top and bottom players
         players_inside_court = sorted(players_inside_court, key=lambda p: p['foot_position'][1][1], reverse=True)
         bottom_player = players_inside_court[0]
         top_player = players_inside_court[1]
 
-        # Save keypoints to respective lists
+        # save keypoints
         bottom_player_data.append({'frame': frame_idx, 'keypoints': bottom_player['keypoints']})
         top_player_data.append({'frame': frame_idx, 'keypoints': top_player['keypoints']})
-        
-        # Draw keypoints and bounding boxes
-        for player, color in [(top_player, (0, 255, 0)), (bottom_player, (0, 0, 255))]:
-            keypoints = player['keypoints']
 
-            # Draw keypoints
-            for kp in keypoints:
+        # draw keypoints
+        for player, color in [(top_player, (0, 255, 0)), (bottom_player, (0, 0, 255))]:
+            for kp in player['keypoints']:
                 x, y = map(int, kp[:2])
                 cv2.circle(frame, (x, y), 5, color, -1)
 
-        corner_colors = [
-            (0, 0, 255),   # Upper-left (Red)
-            (0, 255, 0),   # Upper-right (Green)
-            (255, 0, 0),   # Bottom-left (Blue)
-            (255, 255, 0)  # Bottom-right (Cyan)
-        ]
-
-        # Draw each corner with a different color
-        for i, corner in enumerate(court_corners):
-            x, y = map(int, corner)
-            cv2.circle(frame, (x, y), 8, corner_colors[i], -1)
         out_video.write(frame)
 
     # Release resources

@@ -130,8 +130,16 @@ def process(basedir: str, rally: str, for_train = False):
         end = len(trajectory.X)-num_consec+i+1
         x_bird = np.array(list(zip(trajectory.X[i:end], trajectory.Y[i:end])))
 
+        if x_bird is None or x_bird.size == 0:
+            continue
+
         # Use entire pose
         x_pose = np.hstack([bottom_player[i:end], top_player[i:end]])
+
+        # print(f"x_bird.shape = {x_bird.shape}")
+        # print(f"x_pose.shape = {x_pose.shape}")
+        # print(f"np.array([corners for j in range(i, end)]).shape = {np.array([corners for j in range(i, end)]).shape}")
+
 
         x = np.hstack([x_bird, x_pose, np.array([corners for j in range(i, end)])])
         x_list.append(x)

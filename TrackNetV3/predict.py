@@ -8,12 +8,22 @@ from tqdm import tqdm
 from pathlib import Path
 from TrackNetV3.utils import *
 
-
-def predict_traj(video_file: Path, save_dir: str, verbose = False):
-
+def load_tracknet_model():
     model_file = 'TrackNetV3/exp/model_best.pt'
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    checkpoint = torch.load(model_file, weights_only=True, map_location=device)
+    param_dict = checkpoint['param_dict']
+    model = get_model(param_dict['model_name'], param_dict['num_frame'], param_dict['input_type']).to(device)
+    model.load_state_dict(checkpoint['model_state_dict'])
+    model.eval()
+
+    return model
+
+def predict_traj(video_file: Path, save_dir: str, model, verbose = False):
+
     num_frame = 3
-    batch_size = 1
+    batch_size = 4
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     video_name = video_file.stem
@@ -23,19 +33,8 @@ def predict_traj(video_file: Path, save_dir: str, verbose = False):
 
     print("Video name:", video_name)
 
-    checkpoint = torch.load(model_file, weights_only=True, map_location=device)
-    param_dict = checkpoint['param_dict']
-    model_name = param_dict['model_name']
-    num_frame = param_dict['num_frame']
-    input_type = param_dict['input_type']
-
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
-    
-    # Load model
-    model = get_model(model_name, num_frame, input_type).cuda()
-    model.load_state_dict(checkpoint['model_state_dict'])
-    model.eval()
 
     # Video output configuration
     if video_format == 'avi':

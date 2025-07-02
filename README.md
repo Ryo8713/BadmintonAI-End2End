@@ -58,6 +58,9 @@ The link below provides a sample match video. The duration of video is about 20 
 
 > Full video: [Youtube - BWF](https://www.youtube.com/watch?v=TXT-qlniM90)
 
+The time cost is about 40 minutes.
+![pie](videos/match1/execution_time_proportion.png)
+
 ## License Notice
 
 This project includes components adapted from the [monotrack](https://github.com/jhwang7628/monotrack) repository by Adobe, under the Adobe Research License.  
