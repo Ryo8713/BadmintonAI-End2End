@@ -145,6 +145,16 @@ def process(basedir: str, rally: str, for_train = False):
         x_list.append(x)
 
     # stack data for this rally
+    if len(x_list) == 0:
+        if not for_train:
+            # 推論模式下給 dummy features
+            feature_dim = 2 + bottom_player.shape[1] + top_player.shape[1] + corners.shape[0]
+            dummy_x = np.zeros((1, feature_dim * num_consec))
+            x_t = np.hstack([dummy_x])
+            return x_t, None
+        else:
+            return None
+    
     x_t = np.hstack(x_list)
 
     # Assume we only want predict binary outcome

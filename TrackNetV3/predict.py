@@ -64,6 +64,9 @@ def predict_traj(video_file: Path, save_dir: str, model, verbose = False):
         print(f"[Skip] {video_name} has only {total_frames} frames (need at least {num_frame})")
         success = False
 
+        # fill 0 for missing frames
+        for i in range(total_frames):
+            f.write('0,0,0,0\n')
 
     while success:
         if verbose:

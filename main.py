@@ -35,7 +35,6 @@ def main():
 
     logs = {}    # for recording execution time
     
-    '''
     # ——— 2. Rally clipping ——————————————————————————————————————————————
     print("\n[Message] Start rally clipping\n")
     recording_execution_time(logs, "Start Rally Clipping")
@@ -52,7 +51,7 @@ def main():
     )
     print("[Message] Court detection finished\n")
     recording_execution_time(logs, "End Court Detection")
-    '''
+
     # ——— 4. Trajectory & Pose Prediction —————————————————————————————————————
     print("\n[Message] Start trajectory & pose prediction\n")
     recording_execution_time(logs, "Start Trajectory & Pose Prediction")
@@ -69,7 +68,7 @@ def main():
         process_pose(inferencer, clip_path, str(clip_dir), COURT_OUTPUT)
     print("[Message] Trajectory & pose prediction finished\n")
     recording_execution_time(logs, "End Trajectory & Pose Prediction")
-
+    
     # ——— 5. HitNet ————————————————————————————————————————
     print("\n[Message] Start hit detection\n")
     recording_execution_time(logs, "Start Hit Detection")
@@ -141,8 +140,12 @@ def main():
 
             # Assume y1 < y2 => player is on top (since y grows downward)
             first_frame = df_team[df_team['frame'] == df_team['frame'].min()]
-            top_player = first_frame.loc[first_frame['y1'].idxmin(), 'player_id']
-            bottom_player = first_frame.loc[first_frame['y1'].idxmax(), 'player_id']
+            if first_frame.empty:
+                top_player = 0
+                bottom_player = 1
+            else:
+                top_player = first_frame.loc[first_frame['y1'].idxmin(), 'player_id']
+                bottom_player = first_frame.loc[first_frame['y1'].idxmax(), 'player_id']
         else:
             print(f"[WARN] {team_path} not found; defaulting player0=Top, player1=Bottom")
             top_player = 0
