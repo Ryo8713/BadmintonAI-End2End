@@ -25,15 +25,20 @@ from utils import frame_to_timestamp, visualize_hits_in_video, recording_executi
 
 def main():
     # ——— 1. Paths & config —————————————————————————————————————
-    video_path = Path('full.mp4')
+    video_path = Path('match1.mp4')
     name       = video_path.stem
     RALLY_OUTPUT_DIR = Path('videos') / name
+    RESULT_OUTPUT_DIR = Path('results') / name
 
     COURT_DET_EXE = 'court_detection/court-detection.exe'
     COURT_OUTPUT  = 'court_detection/court.txt'
     COURT_IMAGE   = 'court_detection/court_image.png'
 
+    draw = False # True if you want to visualize the predictions
     logs = {}    # for recording execution time
+
+    # mkdir RESULT_OUTPUT_DIR
+    os.makedirs(RESULT_OUTPUT_DIR, exist_ok = True)
     
     # ——— 2. Rally clipping ——————————————————————————————————————————————
     print("\n[Message] Start rally clipping\n")
@@ -56,16 +61,16 @@ def main():
     print("\n[Message] Start trajectory & pose prediction\n")
     recording_execution_time(logs, "Start Trajectory & Pose Prediction")
     track_model = load_tracknet_model()
-    inferencer = MMPoseInferencer('human')
+    inferencer = MMPoseInferencer('human', device='cuda')
     for clip in os.listdir(RALLY_OUTPUT_DIR):
         clip_dir  = RALLY_OUTPUT_DIR / clip
         clip_path = clip_dir / f"{clip}.mp4"
 
-        traj_csv = predict_traj(clip_path, str(clip_dir), track_model)
-        df       = pd.read_csv(traj_csv, encoding="utf-8")
+        traj_csv = predict_traj(clip_path, str(clip_dir), track_model, verbose=False, draw=draw)
+        # df       = pd.read_csv(traj_csv, encoding="utf-8")
         # smooth(traj_csv, df)
 
-        process_pose(inferencer, clip_path, str(clip_dir), COURT_OUTPUT)
+        process_pose(inferencer, clip_path, str(clip_dir), COURT_OUTPUT, draw)
     print("[Message] Trajectory & pose prediction finished\n")
     recording_execution_time(logs, "End Trajectory & Pose Prediction")
     
@@ -83,7 +88,7 @@ def main():
     for clip in os.listdir(RALLY_OUTPUT_DIR):
         clip_dir = RALLY_OUTPUT_DIR / clip
         print(f"\n[Team] Processing {clip} …")
-        predict_teams(clip_dir, clip, classifier)
+        predict_teams(clip_dir, clip, classifier, draw)
     print("[Message] Team classification finished\n")
     recording_execution_time(logs, "End Team Classification")
 

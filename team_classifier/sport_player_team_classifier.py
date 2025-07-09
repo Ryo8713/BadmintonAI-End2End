@@ -83,7 +83,7 @@ def train_yolo(full_video_path):
 
     return classifier
 
-def predict_teams(clip_dir, clip, classifier):
+def predict_teams(clip_dir, clip, classifier, draw = False):
     '''
     print("[1] 載入模型...")
     model = YOLO("yolov8s.pt").to(DEVICE)
@@ -107,7 +107,9 @@ def predict_teams(clip_dir, clip, classifier):
     fps = cap.get(cv2.CAP_PROP_FPS)
     width  = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    writer = cv2.VideoWriter(output_video_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (width, height))
+
+    if draw:
+        writer = cv2.VideoWriter(output_video_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (width, height))
 
     csv_rows = [["frame", "player_id", "x1", "y1", "x2", "y2", "team_id"]]
     frame_idx = 0
@@ -137,13 +139,17 @@ def predict_teams(clip_dir, clip, classifier):
                 csv_rows.append([frame_idx, pid, x1, y1, x2, y2, int(tid)])
 
             detections.xyxy = np.array(valid_xyxy)
-            frame = draw_boxes(frame, detections, team_ids)
 
-        writer.write(frame)
+            if draw:
+                frame = draw_boxes(frame, detections, team_ids)
+
+        if draw:
+            writer.write(frame)
         frame_idx += 1
 
     cap.release()
-    writer.release()
+    if draw:
+        writer.release()
 
     print(f"[5] 輸出影片：{output_video_path}")
     print(f"[6] 匯出 CSV：{csv_path}")

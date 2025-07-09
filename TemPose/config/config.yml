@@ -2,7 +2,7 @@ model:
   model_name: TF
   # input_dim: 94
   input_dim: 72
-  sequence_length: 100
+  sequence_length: 30
   num_people: 2
   model_dim: 100
   head_dim: 128

@@ -250,7 +250,7 @@ def is_inside_court(foot_positions, court_polygon, threshold=30):
     # Check if inside OR within threshold distance
     return (dist_right >= -threshold or dist_left >= -threshold)
 
-def visualize_video_estimated(inferencer, in_path, csv_output_dir='pose_data.csv', cap=None, court_corners=None):
+def visualize_video_estimated(inferencer, in_path, csv_output_dir='pose_data.csv', cap=None, court_corners=None, draw = False):
     in_path = str(in_path)
     # inferencer = MMPoseInferencer('human')
 
@@ -274,10 +274,10 @@ def visualize_video_estimated(inferencer, in_path, csv_output_dir='pose_data.csv
     fps = int(cap.get(cv2.CAP_PROP_FPS))
     frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-
-    # Set up video writer
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    out_video = cv2.VideoWriter(output_video_path, fourcc, fps, (frame_width, frame_height))
+    
+    if draw:
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        out_video = cv2.VideoWriter(output_video_path, fourcc, fps, (frame_width, frame_height))
 
     result_generator = inferencer(frames, show=False)
 
@@ -310,7 +310,8 @@ def visualize_video_estimated(inferencer, in_path, csv_output_dir='pose_data.csv
 
         # fill the frame with empty keypoints if less than 2 players
         if len(players_inside_court) < 2:
-            out_video.write(frame)
+            if draw:
+                out_video.write(frame)
             bottom_player_data.append({'frame': frame_idx, 'keypoints': [(0, 0)] * 17})
             top_player_data.append({'frame': frame_idx, 'keypoints': [(0, 0)] * 17})
             continue
@@ -325,17 +326,20 @@ def visualize_video_estimated(inferencer, in_path, csv_output_dir='pose_data.csv
         top_player_data.append({'frame': frame_idx, 'keypoints': top_player['keypoints']})
 
         # draw keypoints
-        for player, color in [(top_player, (0, 255, 0)), (bottom_player, (0, 0, 255))]:
-            for kp in player['keypoints']:
-                x, y = map(int, kp[:2])
-                cv2.circle(frame, (x, y), 5, color, -1)
+        if draw:
+            for player, color in [(top_player, (0, 255, 0)), (bottom_player, (0, 0, 255))]:
+                for kp in player['keypoints']:
+                    x, y = map(int, kp[:2])
+                    cv2.circle(frame, (x, y), 5, color, -1)
 
-        out_video.write(frame)
+            out_video.write(frame)
 
     # Release resources
     cap.release()
-    out_video.release()
-    print(f"Visualized video saved to {output_video_path}")
+
+    if draw:
+        out_video.release()
+        print(f"Visualized video saved to {output_video_path}")
 
     bottom_file = os.path.join(csv_output_dir, f"{video_name}_bottom.csv")
     top_file = os.path.join(csv_output_dir, f"{video_name}_top.csv")
@@ -343,7 +347,7 @@ def visualize_video_estimated(inferencer, in_path, csv_output_dir='pose_data.csv
     save_player_keypoints(bottom_player_data, bottom_file)
     save_player_keypoints(top_player_data, top_file)  
 
-def process_pose(inferencer, video_path, csv_output_dir, court_file):
+def process_pose(inferencer, video_path, csv_output_dir, court_file, draw = False):
 
     # Read court corners
     court_corners = read_court_corners(court_file)
@@ -357,7 +361,8 @@ def process_pose(inferencer, video_path, csv_output_dir, court_file):
             in_path=video_path,
             csv_output_dir = csv_output_dir,
             cap=cap,
-            court_corners=court_corners
+            court_corners=court_corners,
+            draw=draw
         )
     cap.release()
 
