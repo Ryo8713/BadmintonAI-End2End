@@ -24,7 +24,7 @@ from team_classifier.sport_player_team_classifier import predict_teams, train_yo
 from utils import frame_to_timestamp, visualize_hits_in_video, recording_execution_time, print_execution_time_with_plot
 
 def main():
-    # ——— 1. Paths & config —————————————————————————————————————
+    # ——— 0. Paths & config —————————————————————————————————————
     video_path = Path('match1.mp4')
     name       = video_path.stem
     RALLY_OUTPUT_DIR = Path('videos') / name
@@ -40,14 +40,14 @@ def main():
     # mkdir RESULT_OUTPUT_DIR
     os.makedirs(RESULT_OUTPUT_DIR, exist_ok = True)
     
-    # ——— 2. Rally clipping ——————————————————————————————————————————————
+    # ——— 1. Rally clipping ——————————————————————————————————————————————
     print("\n[Message] Start rally clipping\n")
     recording_execution_time(logs, "Start Rally Clipping")
     timepoints_clipping(video_path)
     print("[Message] Rally clipping finished\n")
     recording_execution_time(logs, "End Rally Clipping")
     
-    # ——— 3. Court Detection ——————————————————————————————————————————
+    # ——— 2. Court Detection ——————————————————————————————————————————
     print("\n[Message] Start court detection\n")
     recording_execution_time(logs, "Start Court Detection")
     subprocess.run(
@@ -57,7 +57,7 @@ def main():
     print("[Message] Court detection finished\n")
     recording_execution_time(logs, "End Court Detection")
 
-    # ——— 4. Trajectory & Pose Prediction —————————————————————————————————————
+    # ——— 3. Trajectory & Pose Prediction —————————————————————————————————————
     print("\n[Message] Start trajectory & pose prediction\n")
     recording_execution_time(logs, "Start Trajectory & Pose Prediction")
     track_model = load_tracknet_model()
@@ -74,14 +74,14 @@ def main():
     print("[Message] Trajectory & pose prediction finished\n")
     recording_execution_time(logs, "End Trajectory & Pose Prediction")
     
-    # ——— 5. HitNet ————————————————————————————————————————
+    # ——— 4. HitNet ————————————————————————————————————————
     print("\n[Message] Start hit detection\n")
     recording_execution_time(logs, "Start Hit Detection")
     hitnet_detect(RALLY_OUTPUT_DIR)
     print("[Message] Hit detection finished\n")
     recording_execution_time(logs, "End Hit Detection")
     
-    # ——— 6. Team Classification ——————————————————————————————————————
+    # ——— 5. Team Classification ——————————————————————————————————————
     print("\n[Message] Start team classification\n")
     recording_execution_time(logs, "Start Team Classification")
     classifier = train_yolo(video_path)
@@ -91,8 +91,8 @@ def main():
         predict_teams(clip_dir, clip, classifier, draw)
     print("[Message] Team classification finished\n")
     recording_execution_time(logs, "End Team Classification")
-
-    # ——— 7. TemPose  ——————————————————————————————————————
+    
+    # ——— 6. TemPose  ——————————————————————————————————————
     # load model config
     print("\n[Message] Start TemPose\n")
     recording_execution_time(logs, "Start TemPose")
@@ -179,7 +179,7 @@ def main():
     print("[Message] TemPose finished\n")
     recording_execution_time(logs, "End TemPose")
 
-    # ——— 8. Summarize & print —————————————————————————————————————
+    # ——— 7. Summarize & print —————————————————————————————————————
     recording_execution_time(logs, "Start Summarize")
     if not timeline:
         print("\nNo hits detected across all clips.")
@@ -201,11 +201,11 @@ def main():
     df_tl = df_tl.sort_values(["clip", "frame"]).reset_index(drop=True)
     print("\n=== Hit timeline ===")
     print("  timestamp stroke")
-    for entry in timeline:
-        print(f"{entry['timestamp']}   {entry['stroke']}")
+    # for entry in timeline:
+    #    print(f"{entry['timestamp']}   {entry['stroke']}")
 
     print("\n[Message] Visualizing hits in video...")
-    output_video_dir = Path('videos') / f"{name}"
+    output_video_dir = RESULT_OUTPUT_DIR
     output_video_path = output_video_dir / f"{name}_annotated.mp4"
     visualize_hits_in_video(video_path, timeline, output_path=output_video_path)
     

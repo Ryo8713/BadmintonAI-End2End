@@ -10,7 +10,7 @@ COCO_BONES = [
     (11,13), (13,15), (12,14), (14,16),
 ]
 
-def normalize_coords(coords, width=1920, height=1080):
+def normalize_coords(coords, width=1280, height=720):
     coords = coords.astype(np.float64)
     coords[:, 0::2] /= width
     coords[:, 1::2] /= height
