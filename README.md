@@ -58,8 +58,8 @@ The link below provides a sample match video. The duration of video is about 20 
 
 > Full video: [Youtube - BWF](https://www.youtube.com/watch?v=TXT-qlniM90)
 
-The time cost is about 40 minutes.
-![pie](images/execution_time_proportion.png)
+The time cost is about 30 minutes.
+![pie](images/execution_time.png)
 
 ## License Notice
 

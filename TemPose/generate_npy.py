@@ -56,7 +56,7 @@ def process_clip(clip_name, tempose_root, T_max=100):
 
     # 只取 X,Y (第 2,3 欄)，正規化
     ball_df = pd.read_csv(ball_csv)
-    ball_xy = ball_df.iloc[:, 2:4].values / np.array([1920, 1080])
+    ball_xy = ball_df.iloc[:, 2:4].values / np.array([1280, 720])
 
     # 對齊最短長度並 padding
     n = min(len(top), len(bottom), len(ball_xy))

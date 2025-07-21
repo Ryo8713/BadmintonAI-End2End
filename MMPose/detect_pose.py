@@ -3,6 +3,7 @@ import csv
 import os
 import argparse
 import numpy as np
+import pandas as pd
 from mmpose.apis import MMPoseInferencer
 # from mayavi import mlab
 from tqdm import tqdm
@@ -213,6 +214,12 @@ def save_player_keypoints(player_data, output_path):
 
     print(f"Keypoints saved to {output_path}")
 
+def save_player_bbox(bbox, frame_id, output_path):
+    df = pd.DataFrame(bbox, columns=["x1", "y1", "x2", "y2"])
+    df["frame"] = frame_id
+    df = df[["frame", "x1", "y1", "x2", "y2"]]
+    df.to_csv(output_path, index=False)
+
 def read_court_corners(file_path):
     """
     Read the first four court corner coordinates from a .txt file.
@@ -284,22 +291,28 @@ def visualize_video_estimated(inferencer, in_path, csv_output_dir='pose_data.csv
     # Data for CSVs
     bottom_player_data = []
     top_player_data = []
+    bottom_bbox_data = [] 
+    top_bbox_data = []
+    frame_id = []
 
     # Process each frame
     for frame_idx, (result, frame) in enumerate(tqdm(zip(result_generator, frames), total=len(frames), desc=f'Processing {video_name}')):
 
+        frame_id.append(frame_idx)
         people = result['predictions'][0]  # the list of dict of 1 person
 
         players = []
         for person in people:
             keypoints = person['keypoints']
+            bbox = person['bbox'][0]
             if len(keypoints) < 17:
                 continue  # 17 keypoints are required
 
             # Extract keypoints
             players.append({
                 'foot_position': (keypoints[15], keypoints[16]),  # (左腳後跟, 右腳後跟)
-                'keypoints': keypoints
+                'keypoints': keypoints,
+                'bbox': bbox
             })
 
         # Check if there are at least two players inside the court
@@ -314,6 +327,8 @@ def visualize_video_estimated(inferencer, in_path, csv_output_dir='pose_data.csv
                 out_video.write(frame)
             bottom_player_data.append({'frame': frame_idx, 'keypoints': [(0, 0)] * 17})
             top_player_data.append({'frame': frame_idx, 'keypoints': [(0, 0)] * 17})
+            bottom_bbox_data.append((0, 0, 0, 0))
+            top_bbox_data.append((0, 0, 0, 0))
             continue
 
         # Sort players by their foot positions (y-coordinate) to find the top and bottom players
@@ -324,6 +339,8 @@ def visualize_video_estimated(inferencer, in_path, csv_output_dir='pose_data.csv
         # save keypoints
         bottom_player_data.append({'frame': frame_idx, 'keypoints': bottom_player['keypoints']})
         top_player_data.append({'frame': frame_idx, 'keypoints': top_player['keypoints']})
+        bottom_bbox_data.append(bottom_player['bbox'])
+        top_bbox_data.append(top_player['bbox'])
 
         # draw keypoints
         if draw:
@@ -343,9 +360,13 @@ def visualize_video_estimated(inferencer, in_path, csv_output_dir='pose_data.csv
 
     bottom_file = os.path.join(csv_output_dir, f"{video_name}_bottom.csv")
     top_file = os.path.join(csv_output_dir, f"{video_name}_top.csv")
+    bottom_bbox_file = os.path.join(csv_output_dir, f"{video_name}_bottom_bbox.csv")
+    top_bbox_file = os.path.join(csv_output_dir, f"{video_name}_top_bbox.csv")
 
     save_player_keypoints(bottom_player_data, bottom_file)
     save_player_keypoints(top_player_data, top_file)  
+    save_player_bbox(bottom_bbox_data, frame_id, bottom_bbox_file)
+    save_player_bbox(top_bbox_data, frame_id, top_bbox_file)
 
 def process_pose(inferencer, video_path, csv_output_dir, court_file, draw = False):
 

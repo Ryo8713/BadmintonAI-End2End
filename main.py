@@ -25,7 +25,7 @@ from utils import frame_to_timestamp, visualize_hits_in_video, recording_executi
 
 def main():
     # ——— 0. Paths & config —————————————————————————————————————
-    video_path = Path('match1.mp4')
+    video_path = Path('match8.mp4')
     name       = video_path.stem
     RALLY_OUTPUT_DIR = Path('videos') / name
     RESULT_OUTPUT_DIR = Path('results') / name
@@ -39,7 +39,7 @@ def main():
 
     # mkdir RESULT_OUTPUT_DIR
     os.makedirs(RESULT_OUTPUT_DIR, exist_ok = True)
-    
+    '''
     # ——— 1. Rally clipping ——————————————————————————————————————————————
     print("\n[Message] Start rally clipping\n")
     recording_execution_time(logs, "Start Rally Clipping")
@@ -56,7 +56,7 @@ def main():
     )
     print("[Message] Court detection finished\n")
     recording_execution_time(logs, "End Court Detection")
-
+    '''
     # ——— 3. Trajectory & Pose Prediction —————————————————————————————————————
     print("\n[Message] Start trajectory & pose prediction\n")
     recording_execution_time(logs, "Start Trajectory & Pose Prediction")
