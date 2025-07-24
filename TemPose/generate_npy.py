@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 from pathlib import Path
+from TemPose.utils import normalize_joints, normalize_position, get_court_info, to_court_coordinate
 
 # 19 條骨架連線
 COCO_BONES = [
@@ -10,20 +11,15 @@ COCO_BONES = [
     (11,13), (13,15), (12,14), (14,16),
 ]
 
-def normalize_coords(coords, width=1280, height=720):
-    coords = coords.astype(np.float64)
-    coords[:, 0::2] /= width
-    coords[:, 1::2] /= height
-    return coords
-
 def load_keypoints(csv_path):
     df = pd.read_csv(csv_path)
     data = df.iloc[:, 1:].values    # 跳過 frame 欄
-    data = normalize_coords(data)
     return data.reshape(len(df), -1, 2)  # (T, J, 2)
 
-def extract_pos_center(kps):
-    return np.mean(kps, axis=1)      # (T, 2)
+def load_bbox(csv_path):
+    df = pd.read_csv(csv_path)
+    data = df.iloc[:, 1:].values    # 跳過 frame 欄
+    return data                     # (T, 4)
 
 def pad_to_length(data, T_max):
     T = data.shape[0]
@@ -36,34 +32,59 @@ def compute_bones(kps, bones_idx):
     # 回傳 (T, B, 2)
     return np.stack([kps[:, j] - kps[:, i] for i, j in bones_idx], axis=1)
 
-def process_clip(clip_name, tempose_root, T_max=100):
+def process_clip(clip_name, tempose_root, T_max=30):
     """
     tempose_root\
-      clip_1\
+    clip_1\
         clip_1_top.csv
         clip_1_bottom.csv
         clip_1_ball.csv
     """
     clip_dir = Path(tempose_root)
 
-    top_csv    = clip_dir / f"{clip_name}_top.csv"
-    bot_csv    = clip_dir / f"{clip_name}_bottom.csv"
-    ball_csv   = clip_dir / f"{clip_name}_ball.csv"
+    top_csv         = clip_dir / f"{clip_name}_top.csv"
+    bot_csv         = clip_dir / f"{clip_name}_bottom.csv"
+    top_bbox_csv    = clip_dir / f"{clip_name}_top_bbox.csv"
+    bottom_bbox_csv = clip_dir / f"{clip_name}_bottom_bbox.csv"
+    ball_csv        = clip_dir / f"{clip_name}_ball.csv"
 
     # 讀取並正規化 keypoints
-    top    = load_keypoints(top_csv)
-    bottom = load_keypoints(bot_csv)
+    top_key     = load_keypoints(top_csv)
+    bottom_key  = load_keypoints(bot_csv)
+    top_bbox    = load_bbox(top_bbox_csv)
+    bottom_bbox = load_bbox(bottom_bbox_csv)
+
+    # court info
+    court_info = get_court_info()
 
     # 只取 X,Y (第 2,3 欄)，正規化
     ball_df = pd.read_csv(ball_csv)
     ball_xy = ball_df.iloc[:, 2:4].values / np.array([1280, 720])
 
     # 對齊最短長度並 padding
-    n = min(len(top), len(bottom), len(ball_xy))
-    top, bottom, ball_xy = top[:n], bottom[:n], ball_xy[:n]
-    top    = pad_to_length(top, T_max)
-    bottom = pad_to_length(bottom, T_max)
+    n = min(len(top_key), len(bottom_key), len(ball_xy), len(top_bbox), len(bottom_bbox))
+    top, bottom, ball_xy, top_bbox, bottom_bbox = top_key[:n], bottom_key[:n], ball_xy[:n], top_bbox[:n], bottom_bbox[:n]
+    '''
+    top    = pad_to_length(top, T_max)      # (T_max, J, 2)
+    bottom = pad_to_length(bottom, T_max)   # (T_max, J, 2)
     ball_xy= pad_to_length(ball_xy, T_max)
+    top_bbox    = pad_to_length(top_bbox, T_max)
+    bottom_bbox = pad_to_length(bottom_bbox, T_max)
+    '''
+
+    # position
+    top_feet, bottom_feet = top[:, -2:, :], bottom[:, -2:, :]       # (T_max, J=2, 2)
+    top_feet = to_court_coordinate(top_feet, court_info['H'])       # (T_max, J=2, 2)
+    bottom_feet = to_court_coordinate(bottom_feet, court_info['H']) # (T_max, J=2, 2)
+    
+    # normalize
+    top_pos = normalize_position(top_feet, court_info)
+    bottom_pos = normalize_position(bottom_feet, court_info)
+    pos = np.concatenate([top_pos, bottom_pos], axis=1)  # (T_max, 2, 2)
+
+    # normalize keypoints
+    top = normalize_joints(top, top_bbox)           # (T_max, 1, 2)
+    bottom = normalize_joints(bottom, bottom_bbox)  # (T_max, 1, 2)
 
     # 計算骨架向量
     t_top = compute_bones(top, COCO_BONES)
@@ -75,21 +96,16 @@ def process_clip(clip_name, tempose_root, T_max=100):
 
     # 最終 human_pose: (1, T, 2, J+B, 2)
     human_pose = np.stack([top_all, bot_all], axis=1)[None, ...]
-    pos        = np.stack([extract_pos_center(top), extract_pos_center(bottom)], axis=1)[None, ...]
+    pos        = np.expand_dims(pos, axis=0)
     shuttle    = ball_xy[None, ...]
-    videos_len = np.array([n])
-    labels     = np.array([0], dtype=int)
+    # videos_len = np.array([n])
+    # labels     = np.array([0], dtype=int)
 
     # 儲存到 clip_dir
     np.save(clip_dir / 'JnB_bone.npy', human_pose)
     np.save(clip_dir / 'pos.npy', pos)
     np.save(clip_dir / 'shuttle.npy', shuttle)
-    np.save(clip_dir / 'videos_len.npy', videos_len)
-    np.save(clip_dir / 'labels.npy', labels)
+    # np.save(clip_dir / 'videos_len.npy', videos_len)
+    # np.save(clip_dir / 'labels.npy', labels)
 
     print(f"[✓] Saved .npy files into {clip_dir}")
-
-if __name__ == "__main__":
-    # 把下面路徑改成你本機的 tempose 根目錄
-    tempose_root = r"C:\Badminton\BadmintonAI-End2End\tempose"
-    process_clip("clip_1", tempose_root)

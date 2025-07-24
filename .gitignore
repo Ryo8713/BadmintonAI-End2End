@@ -3,6 +3,7 @@
 
 __pycache__/
 final_result/
+results/
 npy/
 videos/
 traj/

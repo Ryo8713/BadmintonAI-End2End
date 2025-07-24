@@ -56,7 +56,7 @@ def main():
     )
     print("[Message] Court detection finished\n")
     recording_execution_time(logs, "End Court Detection")
-    '''
+    
     # ——— 3. Trajectory & Pose Prediction —————————————————————————————————————
     print("\n[Message] Start trajectory & pose prediction\n")
     recording_execution_time(logs, "Start Trajectory & Pose Prediction")
@@ -91,7 +91,7 @@ def main():
         predict_teams(clip_dir, clip, classifier, draw)
     print("[Message] Team classification finished\n")
     recording_execution_time(logs, "End Team Classification")
-    
+    '''
     # ——— 6. TemPose  ——————————————————————————————————————
     # load model config
     print("\n[Message] Start TemPose\n")
@@ -194,7 +194,8 @@ def main():
         .reset_index(drop=True)
     )
     print("\n=== Stroke counts ===")
-    print(df_counts.to_string(index=False))
+    for row in df_counts.itertuples(index=False):
+        print(f"{row.stroke:<20} {row.count:>5}")
 
     # b) Full hit timeline
     df_tl = pd.DataFrame(timeline)
@@ -210,7 +211,7 @@ def main():
     visualize_hits_in_video(video_path, timeline, output_path=output_video_path)
     
     # Optionally save CSVs:
-    #df_counts.to_csv(RALLY_OUTPUT / "summary_counts.csv", index=False)
+    df_counts.to_csv(output_video_dir / "summary_counts.csv", index=False)
     #df_tl   .to_csv(RALLY_OUTPUT / "hit_timeline.csv",  index=False)
 
     #print(f"\n[Done] Summaries written to {RALLY_OUTPUT / 'summary_counts.csv'} and hit_timeline.csv")

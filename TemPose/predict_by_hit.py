@@ -46,17 +46,16 @@ def per_hit_predict(model, clip_dir: Path, hit_csv: Path, cfg: dict, device: tor
         b, t, m, d = p.shape  # (1, 30, 2, 2)
         p = p.view(b, t, m * d)  # (1, 30, 4)
 
-        # print("X: ", x.shape)
-        # print("P: ", p.shape)
-        # print("S: ", s.shape)
+        # print("X: ", x.shape)   # (1, 30, 2, 36, 2)
+        # print("P: ", p.shape)   # (1, 30, 4)
+        # print("S: ", s.shape)   # (1, 30, 2)
 
-        sp = torch.cat([p, s], dim=-1)  # (b, t, 6)
+        sp = torch.cat([s, p], dim=-1)  # (b, t, 6)
 
         b,t,m,j,d = x.shape
         x = x.view(b, t, m, j*d)
         sp = sp.view(b, t, -1)
         
-
         with torch.no_grad():
             pred_idx = model.predict(x, sp, t_pad)
         name = stroke_names[pred_idx.item()]
