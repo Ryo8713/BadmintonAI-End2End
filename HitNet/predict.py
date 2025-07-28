@@ -14,7 +14,7 @@ batch_size = 4096
 
 MODEL_PATH = 'HitNet/hitnet.pth'
 
-def predict(rally_output_dir, start_frame, device=None, threshold=0.53):
+def predict(rally_output_dir, start_frame, device=None, threshold=0.66):
     if device is None:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
