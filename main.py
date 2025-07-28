@@ -49,7 +49,7 @@ def main():
     start_frame = timepoints_clipping(video_path, fps)
     print("[Message] Rally clipping finished\n")
     recording_execution_time(logs, "End Rally Clipping")
-    '''
+    
     # ——— 2. Court Detection ——————————————————————————————————————————
     print("\n[Message] Start court detection\n")  
     recording_execution_time(logs, "Start Court Detection")
@@ -86,7 +86,7 @@ def main():
         process_pose(inferencer, clip_path, str(clip_dir), COURT_OUTPUT, start_frame_number, draw)
     print("[Message] Trajectory & pose prediction finished\n")
     recording_execution_time(logs, "End Trajectory & Pose Prediction")
-    '''
+    
     # ——— 4. HitNet ————————————————————————————————————————
     print("\n[Message] Start hit detection\n")
     recording_execution_time(logs, "Start Hit Detection")

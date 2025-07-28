@@ -65,6 +65,23 @@ The time cost is about 30 minutes.
 
 I've just found that the current HitNet model is not suitable enough for the frame-level classification task.
 I'm currently working on improving the model and will release a new version these days.
+The new trained model performance:
+```
+Best threshold = 0.50, Recall = 0.8777
+          Val Loss: 0.2958 | Val Recall: 0.8777 | Val F1: 0.7251
+
+              precision    recall  f1-score   support
+
+           0       0.99      0.87      0.93     26066
+           1       0.37      0.88      0.52      2194
+
+    accuracy                           0.87     28260
+   macro avg       0.68      0.88      0.73     28260
+weighted avg       0.94      0.87      0.90     28260
+
+[[0.87431904 0.12568096]
+ [0.1189608  0.8810392 ]]
+```
 
 ## License Notice
 
