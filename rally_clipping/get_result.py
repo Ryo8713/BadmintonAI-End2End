@@ -1,5 +1,6 @@
 from rally_clipping.module import *
 from rally_clipping.img_predict import run_inference
+from rally_clipping.utils import *
 from tqdm import tqdm
 import numpy as np
 import cv2

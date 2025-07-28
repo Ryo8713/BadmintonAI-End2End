@@ -49,9 +49,9 @@ def main():
     start_frame = timepoints_clipping(video_path, fps)
     print("[Message] Rally clipping finished\n")
     recording_execution_time(logs, "End Rally Clipping")
-    
+    '''
     # ——— 2. Court Detection ——————————————————————————————————————————
-    print("\n[Message] Start court detection\n")
+    print("\n[Message] Start court detection\n")  
     recording_execution_time(logs, "Start Court Detection")
 
     # check if the txt file to overwrite exists
@@ -59,9 +59,11 @@ def main():
     if not os.path.exists(COURT_OUTPUT):
         with open(COURT_OUTPUT, 'w'):
             pass
-
+    
+    # take the 50th frame of clip_7 as the input image for court detection
+    clip_path = RALLY_OUTPUT_DIR / "clip_7" / f"clip_7.mp4"
     subprocess.run(
-        [COURT_DET_EXE, str(video_path), COURT_OUTPUT, COURT_IMAGE, "400"], 
+        [COURT_DET_EXE, str(clip_path), COURT_OUTPUT, COURT_IMAGE, "50"], 
         capture_output=True, text=True
     )
     print("[Message] Court detection finished\n")
@@ -84,7 +86,7 @@ def main():
         process_pose(inferencer, clip_path, str(clip_dir), COURT_OUTPUT, start_frame_number, draw)
     print("[Message] Trajectory & pose prediction finished\n")
     recording_execution_time(logs, "End Trajectory & Pose Prediction")
-    
+    '''
     # ——— 4. HitNet ————————————————————————————————————————
     print("\n[Message] Start hit detection\n")
     recording_execution_time(logs, "Start Hit Detection")

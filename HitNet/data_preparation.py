@@ -11,9 +11,8 @@ from skimage.transform import resize
 from ai_badminton.pose import read_player_poses
 from ai_badminton.trajectory import Trajectory
 
-num_consec = 12 
-left_window = 6
-right_window = 0
+window_size = 7
+half = window_size // 2
 speed = 1.0
 
 COURT_OUTPUT = 'court_detection/court.txt'
@@ -84,96 +83,89 @@ def resample(series, s):
 
 def process(basedir: str, rally: str, for_train = False):
     '''
-    Preparing data for a rally
+    Prepare frame-level input data with fixed-size sliding window (7 frames) and edge padding.
 
-    Argument: 
-        basedir: the directiory path of match
-        rally: the name of rally, it's something like 'clip_1'
-        for_train: whether to prepare label for training stage
-    
-    Return:
-        x_t: the processed features
-        y_t: the processed binary label
+    Args:
+        basedir (str): Path to match directory
+        rally (str): Rally name like 'clip_1'
+
+    Returns:
+        x_t (ndarray): Feature vectors of shape (num_frames, 7 * feature_dim)
+        y_t (ndarray): Binary labels per frame (num_frames,)
     '''
-    video_path = f'{basedir}{rally}.mp4'
+    import numpy as np
+    import cv2
+
+    video_path = f'{basedir}/rally_video/{rally}.mp4'
     x_list, y_list = [], []
 
-    # fetch data
-    data_dict = fetch_data(basedir, rally, for_train)
+    # fetch rally data
+    data_dict = fetch_data(basedir, rally)
     if data_dict is None:
         return None
-    corners = data_dict['corners']
+
     trajectory = data_dict['trajectory']
+    
     bottom_player = data_dict['bottom_player']
     top_player = data_dict['top_player']
-    
-    # open video by cv2
-    cap = cv2.VideoCapture(video_path)
-    _, frame = cap.read()
-    height, width = frame.shape[:2]      
 
-    # resample data with speed = 1 (see utils/resample)
+    # resample all inputs
     trajectory.X = resample(np.array(trajectory.X), speed)
     trajectory.Y = resample(np.array(trajectory.Y), speed)
+    
     bottom_player = resample(bottom_player.values, speed)
     top_player = resample(top_player.values, speed)
 
-    min_len = min(len(trajectory.X), len(bottom_player), len(top_player))
+    num_frames = len(trajectory.X)
 
-    trajectory.X = trajectory.X[:min_len]
-    trajectory.Y = trajectory.Y[:min_len]
-    bottom_player = bottom_player[:min_len]
-    top_player = top_player[:min_len]
-
-
-    for i in range(num_consec):
-        end = len(trajectory.X)-num_consec+i+1
-        x_bird = np.array(list(zip(trajectory.X[i:end], trajectory.Y[i:end])))
-
-        if x_bird is None or x_bird.size == 0:
-            continue
-
-        # Use entire pose
-        x_pose = np.hstack([bottom_player[i:end], top_player[i:end]])
-
-        # print(f"x_bird.shape = {x_bird.shape}")
-        # print(f"x_pose.shape = {x_pose.shape}")
-        # print(f"np.array([corners for j in range(i, end)]).shape = {np.array([corners for j in range(i, end)]).shape}")
-
-
-        x = np.hstack([x_bird, x_pose, np.array([corners for j in range(i, end)])])
-        x_list.append(x)
-
-    # stack data for this rally
-    if len(x_list) == 0:
-        if not for_train:
-            # 推論模式下給 dummy features
-            feature_dim = 2 + bottom_player.shape[1] + top_player.shape[1] + corners.shape[0]
-            dummy_x = np.zeros((1, feature_dim * num_consec))
-            x_t = np.hstack([dummy_x])
-            return x_t, None
-        else:
-            return None
-    
-    x_t = np.hstack(x_list)
-
-    # Assume we only want predict binary outcome
-    # Then no other processing is required
     if for_train:
         hit = data_dict['hit']
-        hit = resample(hit, speed).round()
-        y_new = np.array(hit)
-        for i in range(num_consec):
-            y = y_new[i:end]
-            y_list.append(y)
-        if right_window > 0:
-            y_t = np.max(np.column_stack(y_list[left_window:-right_window]), axis=1)
-        else:
-            y_t = np.max(np.column_stack(y_list[left_window:]), axis=1)
+        hit = resample(hit, speed).round().astype(int)
+        num_frames = len(hit)
 
-        return x_t, y_t
+        # label smoothing for temporal context
+        smooth_hit = hit.copy()
+        for t in range(num_frames):
+            if hit[t] == 1:
+                if t > 0:
+                    smooth_hit[t-1] = 1
+                if t < num_frames - 1:
+                    smooth_hit[t+1] = 1
 
-    return x_t, None
+    def get_padded_window(arr, t):
+        start = max(0, t - half)
+        end = min(num_frames, t + half + 1)
+        window = arr[start:end]
+
+        # Padding with edge values
+        if len(window) < window_size:
+            if start == 0:
+                pad = [arr[0]] * (window_size - len(window))
+                window = pad + list(window)
+            else:
+                pad = [arr[-1]] * (window_size - len(window))
+                window = list(window) + pad
+
+        return np.array(window)
+
+    for t in range(num_frames):
+        bird_xy = np.stack([
+            get_padded_window(trajectory.X, t),
+            get_padded_window(trajectory.Y, t)
+        ], axis=1)  # (7, 2)
+
+        bottom = get_padded_window(bottom_player, t)  # (7, pose_dim)
+        top = get_padded_window(top_player, t)        # (7, pose_dim)
+
+        x = np.hstack([bird_xy, bottom, top])         # (7, feature_dim)
+        x_list.append(x)
+
+        if for_train:                    
+            y_list.append(smooth_hit[t])              # binary label
+
+    x_t = np.array(x_list)
+    y_t = np.array(y_list) if for_train else None
+    return x_t, y_t
 
 def make_data_for_train(matches_dir, matches_lst):
     X_lst, y_lst = [], []

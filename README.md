@@ -61,6 +61,11 @@ The link below provides a sample match video. The duration of video is about 20 
 The time cost is about 30 minutes.
 ![pie](images/execution_time.png)
 
+## HitNet
+
+I've just found that the current HitNet model is not suitable enough for the frame-level classification task.
+I'm currently working on improving the model and will release a new version these days.
+
 ## License Notice
 
 This project includes components adapted from the [monotrack](https://github.com/jhwang7628/monotrack) repository by Adobe, under the Adobe Research License.  
