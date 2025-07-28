@@ -81,6 +81,8 @@ def video_clipping(video_path, name, fps=30):
     print(f"[Rally Clipping] Starts clipping video")
 
     clips = []
+    frame_start_number = {} 
+
     pbar = tqdm(total=len(time_points)-1, desc = 'Clipping Rallies')
     for i in range(0, len(time_points)-1, 2):
         start_time = time_points[i].strip()
@@ -90,6 +92,8 @@ def video_clipping(video_path, name, fps=30):
 
         if end_frame > total_frames:
             end_frame = total_frames
+
+        frame_start_number[f'clip_{i+1}'] = start_frame
 
         cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)  
 
@@ -117,6 +121,7 @@ def video_clipping(video_path, name, fps=30):
     pbar.close()
 
     print(f'[Rally Clipping] Clips saved to {output_dir}')
+    return frame_start_number
 
 
 def timepoints_clipping(video_path: Path, fps = 30):
@@ -168,4 +173,5 @@ def timepoints_clipping(video_path: Path, fps = 30):
     
     # video_path = infer_video_path in img_predict.py
     # or modify the path here
-    video_clipping(video_path, name)
+    frame_start_number = video_clipping(video_path, name, fps)
+    return frame_start_number

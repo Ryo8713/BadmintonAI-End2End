@@ -4,6 +4,12 @@ from datetime import datetime
 from pathlib import Path
 import matplotlib.pyplot as plt
 
+def get_video_fps(video_path):
+    cap = cv2.VideoCapture(video_path)
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    cap.release()
+    return round(fps)
+
 def frame_to_timestamp(video_file: Path, frame_idx: int, original_video_path: Path = None):
     """Convert frame index to timestamp, relative to original video if provided"""
     # Get clip info

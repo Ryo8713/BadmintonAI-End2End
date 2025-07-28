@@ -14,7 +14,7 @@ batch_size = 4096
 
 MODEL_PATH = 'HitNet/hitnet.pth'
 
-def predict(rally_output_dir, device=None, threshold=0.67):
+def predict(rally_output_dir, start_frame, device=None, threshold=0.67):
     if device is None:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -25,7 +25,7 @@ def predict(rally_output_dir, device=None, threshold=0.67):
 
     for clip in os.listdir(rally_output_dir):
         clip_dir = f'{rally_output_dir}/{clip}/'
-        print(f"\n[HitNet] Processing {clip} ...")
+        # print(f"\n[HitNet] Processing {clip} ...")
         X = make_data_for_predict(clip_dir, clip)
         
         X_tensor = torch.tensor(X, dtype=torch.float32)
@@ -41,6 +41,6 @@ def predict(rally_output_dir, device=None, threshold=0.67):
                 all_preds.extend(preds.cpu().numpy())
 
         hits = pd.DataFrame(all_preds, columns=['hit'])
-        hits['frame'] = hits.index  # 把 index 存進欄位
+        hits['frame'] = start_frame[clip] + hits.index  # 把 index 存進欄位
         hits = hits[['frame', 'hit']]  # 調整欄位順序
         hits.to_csv(f'{clip_dir}/{clip}_hits.csv', index=False)

@@ -20,7 +20,7 @@ def load_tracknet_model():
 
     return model
 
-def predict_traj(video_file: Path, save_dir: str, model, verbose = False, draw = False):
+def predict_traj(video_file: Path, save_dir: str, model, start_frame_number, verbose = False, draw = False):
 
     num_frame = 3
     batch_size = 4
@@ -140,7 +140,7 @@ def predict_traj(video_file: Path, save_dir: str, model, verbose = False, draw =
                     cx_pred, cy_pred = int(ratio*cx_pred), int(ratio*cy_pred)
                     vis = 1 if cx_pred > 0 and cy_pred > 0 else 0
                     # Write prediction result
-                    f.write(f'{frame_count-(num_frame*batch_size)+i},{vis},{cx_pred},{cy_pred}\n')
+                    f.write(f'{start_frame_number+frame_count-(num_frame*batch_size)+i},{vis},{cx_pred},{cy_pred}\n')
                     # print(frame_count-(num_frame*batch_size)+i)
                     if draw:
                         if cx_pred != 0 or cy_pred != 0:

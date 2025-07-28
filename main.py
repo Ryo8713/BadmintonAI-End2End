@@ -21,11 +21,11 @@ from TemPose.TemPoseII        import TemPoseII_TF
 
 from team_classifier.sport_player_team_classifier import predict_teams, train_yolo
 
-from utils import frame_to_timestamp, visualize_hits_in_video, recording_execution_time, print_execution_time_with_plot
+from utils import frame_to_timestamp, visualize_hits_in_video, recording_execution_time, print_execution_time_with_plot, get_video_fps
 
 def main():
     # ——— 0. Paths & config —————————————————————————————————————
-    video_path = Path('match8.mp4')
+    video_path = Path('full_1.mp4')
     name       = video_path.stem
     RALLY_OUTPUT_DIR = Path('videos') / name
     RESULT_OUTPUT_DIR = Path('results') / name
@@ -34,22 +34,32 @@ def main():
     COURT_OUTPUT  = 'court_detection/court.txt'
     COURT_IMAGE   = 'court_detection/court_image.png'
 
+    # take the correct fps
+    fps = get_video_fps(str(video_path))
+
     draw = False # True if you want to visualize the predictions
     logs = {}    # for recording execution time
 
     # mkdir RESULT_OUTPUT_DIR
     os.makedirs(RESULT_OUTPUT_DIR, exist_ok = True)
-    '''
+    
     # ——— 1. Rally clipping ——————————————————————————————————————————————
     print("\n[Message] Start rally clipping\n")
     recording_execution_time(logs, "Start Rally Clipping")
-    timepoints_clipping(video_path)
+    start_frame = timepoints_clipping(video_path, fps)
     print("[Message] Rally clipping finished\n")
     recording_execution_time(logs, "End Rally Clipping")
     
     # ——— 2. Court Detection ——————————————————————————————————————————
     print("\n[Message] Start court detection\n")
     recording_execution_time(logs, "Start Court Detection")
+
+    # check if the txt file to overwrite exists
+    # create file if it doesn't exist
+    if not os.path.exists(COURT_OUTPUT):
+        with open(COURT_OUTPUT, 'w'):
+            pass
+
     subprocess.run(
         [COURT_DET_EXE, str(video_path), COURT_OUTPUT, COURT_IMAGE, "400"], 
         capture_output=True, text=True
@@ -65,19 +75,20 @@ def main():
     for clip in os.listdir(RALLY_OUTPUT_DIR):
         clip_dir  = RALLY_OUTPUT_DIR / clip
         clip_path = clip_dir / f"{clip}.mp4"
+        start_frame_number = start_frame[clip]
 
-        traj_csv = predict_traj(clip_path, str(clip_dir), track_model, verbose=False, draw=draw)
+        traj_csv = predict_traj(clip_path, str(clip_dir), track_model, start_frame_number=start_frame_number, verbose=False, draw=draw)
         # df       = pd.read_csv(traj_csv, encoding="utf-8")
         # smooth(traj_csv, df)
 
-        process_pose(inferencer, clip_path, str(clip_dir), COURT_OUTPUT, draw)
+        process_pose(inferencer, clip_path, str(clip_dir), COURT_OUTPUT, start_frame_number, draw)
     print("[Message] Trajectory & pose prediction finished\n")
     recording_execution_time(logs, "End Trajectory & Pose Prediction")
     
     # ——— 4. HitNet ————————————————————————————————————————
     print("\n[Message] Start hit detection\n")
     recording_execution_time(logs, "Start Hit Detection")
-    hitnet_detect(RALLY_OUTPUT_DIR)
+    hitnet_detect(RALLY_OUTPUT_DIR, start_frame)
     print("[Message] Hit detection finished\n")
     recording_execution_time(logs, "End Hit Detection")
     
@@ -91,7 +102,7 @@ def main():
         predict_teams(clip_dir, clip, classifier, draw)
     print("[Message] Team classification finished\n")
     recording_execution_time(logs, "End Team Classification")
-    '''
+    
     # ——— 6. TemPose  ——————————————————————————————————————
     # load model config
     print("\n[Message] Start TemPose\n")
@@ -117,6 +128,8 @@ def main():
     # Prepare containers for summarization
     overall_counts = Counter()
     timeline       = []
+    all_hit_frames = []
+    all_strokes    = []
 
     # For each clip: gen npy + per‐hit predict 
     for clip in sorted(os.listdir(RALLY_OUTPUT_DIR)):
@@ -132,7 +145,7 @@ def main():
             continue
 
         # This returns a list of (frame_idx, stroke_name) for all hits in this clip
-        events = per_hit_predict(model, clip_dir, hit_csv, cfg, device)
+        hit_frames, strokes = per_hit_predict(model, clip_dir, hit_csv, cfg, device)
 
         # accumulate
         video_file = clip_dir / f"{clip}.mp4"
@@ -156,7 +169,7 @@ def main():
             top_player = 0
             bottom_player = 1
 
-        for frame_idx, stroke in events:
+        for stroke in strokes:
             # Map Top_ / Bottom_ to Player0_ / Player1_
             if stroke.startswith("Top_"):
                 true_player = top_player
@@ -168,6 +181,10 @@ def main():
                 true_player = None  # Unknown role
 
             overall_counts[stroke] += 1
+
+            # TODO: visualize hits in video
+            # Not use now
+            '''
             ts = frame_to_timestamp(video_file, frame_idx, original_video_path=video_path)
             timeline.append({
                 "clip": clip,
@@ -176,14 +193,21 @@ def main():
                 "stroke": stroke,
                 "player_id": true_player
             })
+            '''
+
+        all_hit_frames.extend(hit_frames)
+        all_strokes.extend(strokes)
+
     print("[Message] TemPose finished\n")
     recording_execution_time(logs, "End TemPose")
-
+    
     # ——— 7. Summarize & print —————————————————————————————————————
     recording_execution_time(logs, "Start Summarize")
+    '''
     if not timeline:
         print("\nNo hits detected across all clips.")
         return
+    '''
 
     # a) Stroke counts
     df_counts = (
@@ -198,6 +222,11 @@ def main():
         print(f"{row.stroke:<20} {row.count:>5}")
 
     # b) Full hit timeline
+    # TODO: visualize hits in video
+    # Now we just output the hit timeline as a CSV
+
+    output_video_dir = RESULT_OUTPUT_DIR
+    '''
     df_tl = pd.DataFrame(timeline)
     df_tl = df_tl.sort_values(["clip", "frame"]).reset_index(drop=True)
     print("\n=== Hit timeline ===")
@@ -206,13 +235,18 @@ def main():
     #    print(f"{entry['timestamp']}   {entry['stroke']}")
 
     print("\n[Message] Visualizing hits in video...")
-    output_video_dir = RESULT_OUTPUT_DIR
+    
     output_video_path = output_video_dir / f"{name}_annotated.mp4"
     visualize_hits_in_video(video_path, timeline, output_path=output_video_path)
+    '''
+
+    # save all_events to a csv
+    # hit_frames & strokes
+    df_events = pd.DataFrame({"frame": all_hit_frames, "stroke": all_strokes}).sort_values("frame").reset_index(drop=True)
     
     # Optionally save CSVs:
-    df_counts.to_csv(output_video_dir / "summary_counts.csv", index=False)
-    #df_tl   .to_csv(RALLY_OUTPUT / "hit_timeline.csv",  index=False)
+    df_counts.to_csv(RESULT_OUTPUT_DIR / "summary_counts.csv", index=False)
+    df_events.to_csv(RESULT_OUTPUT_DIR / "hit_events.csv",  index=False)
 
     #print(f"\n[Done] Summaries written to {RALLY_OUTPUT / 'summary_counts.csv'} and hit_timeline.csv")
     recording_execution_time(logs, "End Summarize")

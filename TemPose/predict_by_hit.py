@@ -23,20 +23,24 @@ def per_hit_predict(model, clip_dir: Path, hit_csv: Path, cfg: dict, device: tor
 
     df_hits = pd.read_csv(hit_csv)
     hit_frames = df_hits.loc[df_hits['hit']==1, 'frame'].astype(int).tolist()
+    first_frame_num = df_hits.loc[0]['frame']
 
     T = cfg["model"]["sequence_length"]
     stroke_names = get_stroke_types()  # 0..34 的名稱列表
 
     print(f"Found {len(hit_frames)} hits, window size {T}")
 
-    events = []
+    hfs = []
+    strokes = []
 
     for i, hf in enumerate(hit_frames):
-        seg_hp  = slice_and_pad(hp[0].cpu().numpy(),  hf, T)[None]   # (1, T, 2, J+B, 2)
-        seg_pos = slice_and_pad(pos[0].cpu().numpy(), hf, T)[None]   # (1, T, 2, 2)
-        seg_sh  = slice_and_pad(sh[0].cpu().numpy(),  hf, T)[None]   # (1, T, 2)
+        relateive_frame = hf - first_frame_num
 
-        valid_len = min(T, hp.shape[1] - max(0, hf - T//2))
+        seg_hp  = slice_and_pad(hp[0].cpu().numpy(),  relateive_frame, T)[None]   # (1, T, 2, J+B, 2)
+        seg_pos = slice_and_pad(pos[0].cpu().numpy(), relateive_frame, T)[None]   # (1, T, 2, 2)
+        seg_sh  = slice_and_pad(sh[0].cpu().numpy(),  relateive_frame, T)[None]   # (1, T, 2)
+
+        valid_len = min(T, hp.shape[1] - max(0, relateive_frame - T//2))
         t_pad = torch.tensor([valid_len], device=device)
 
         x = torch.tensor(seg_hp,  dtype=torch.float32, device=device)
@@ -59,7 +63,8 @@ def per_hit_predict(model, clip_dir: Path, hit_csv: Path, cfg: dict, device: tor
         with torch.no_grad():
             pred_idx = model.predict(x, sp, t_pad)
         name = stroke_names[pred_idx.item()]
-        events.append((hf, name))
+        hfs.append(hf)
+        strokes.append(name)
 
-    return events
+    return hfs, strokes
 

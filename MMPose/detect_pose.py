@@ -257,7 +257,7 @@ def is_inside_court(foot_positions, court_polygon, threshold=30):
     # Check if inside OR within threshold distance
     return (dist_right >= -threshold or dist_left >= -threshold)
 
-def visualize_video_estimated(inferencer, in_path, csv_output_dir='pose_data.csv', cap=None, court_corners=None, draw = False):
+def visualize_video_estimated(inferencer, in_path, csv_output_dir='pose_data.csv', cap=None, court_corners=None, start_frame_number = 0, draw = False):
     in_path = str(in_path)
     # inferencer = MMPoseInferencer('human')
 
@@ -297,6 +297,8 @@ def visualize_video_estimated(inferencer, in_path, csv_output_dir='pose_data.csv
 
     # Process each frame
     for frame_idx, (result, frame) in enumerate(tqdm(zip(result_generator, frames), total=len(frames), desc=f'Processing {video_name}')):
+
+        frame_idx += start_frame_number
 
         frame_id.append(frame_idx)
         people = result['predictions'][0]  # the list of dict of 1 person
@@ -368,7 +370,7 @@ def visualize_video_estimated(inferencer, in_path, csv_output_dir='pose_data.csv
     save_player_bbox(bottom_bbox_data, frame_id, bottom_bbox_file)
     save_player_bbox(top_bbox_data, frame_id, top_bbox_file)
 
-def process_pose(inferencer, video_path, csv_output_dir, court_file, draw = False):
+def process_pose(inferencer, video_path, csv_output_dir, court_file, start_frame_number, draw = False):
 
     # Read court corners
     court_corners = read_court_corners(court_file)
@@ -383,6 +385,7 @@ def process_pose(inferencer, video_path, csv_output_dir, court_file, draw = Fals
             csv_output_dir = csv_output_dir,
             cap=cap,
             court_corners=court_corners,
+            start_frame_number = start_frame_number,
             draw=draw
         )
     cap.release()
