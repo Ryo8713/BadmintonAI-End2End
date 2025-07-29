@@ -3,6 +3,20 @@ import cv2
 from datetime import datetime
 from pathlib import Path
 import matplotlib.pyplot as plt
+from PIL import ImageFont, ImageDraw, Image
+import numpy as np
+import pandas as pd
+
+def draw_chinese_text(img, text, position, font_path='NotoSansTC-ExtraLight.ttf', font_size=24, color=(255, 0, 0)):
+    # 轉成 PIL Image
+    img_pil = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+    draw = ImageDraw.Draw(img_pil)
+    font = ImageFont.truetype(font_path, font_size)
+
+    draw.text(position, text, font=font, fill=color)
+    
+    # 轉回 OpenCV 格式
+    return cv2.cvtColor(np.array(img_pil), cv2.COLOR_RGB2BGR)
 
 def get_video_fps(video_path):
     cap = cv2.VideoCapture(video_path)
@@ -82,7 +96,7 @@ def frame_to_timestamp(video_file: Path, frame_idx: int, original_video_path: Pa
     
     return f"{int(h):02d}:{int(m):02d}:{int_s:02d}.{int(ms):06d}"
 
-def visualize_hits_in_video(video_path, timeline, output_path=None):
+def visualize_hits_in_video(video_path, df_events, output_path=None):
     """
     Annotate the original video with hit timestamps and stroke types.
     
@@ -104,27 +118,12 @@ def visualize_hits_in_video(video_path, timeline, output_path=None):
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
     out = cv2.VideoWriter(str(output_path), fourcc, fps, (width, height))
     
-    # Convert timestamps to frame numbers
-    hit_frames = {}
-    for hit in timeline:
-        timestamp = hit['timestamp']
-        stroke = hit['stroke']
-        
-        # Parse timestamp (HH:MM:SS.msec)
-        hours, minutes, sec_parts = timestamp.split(':')
-        seconds, msec = sec_parts.split('.')
-        
-        total_seconds = (int(hours) * 3600) + (int(minutes) * 60) + int(seconds) + float(f"0.{msec}")
-        frame_num = int(total_seconds * fps)
-        
-        hit_frames[frame_num] = stroke
-    
     # Process each frame
     print(f"\n[Message] Annotating video with hit events")
     progress_interval = max(1, total_frames // 100)  # Update progress every 1%
     
     current_frame = 0
-    active_hits = []  # List of (hit_text, remaining_display_frames)
+    event_dict = {int(row['frame']): row.get('stroke') for _, row in df_events.iterrows()}
     
     while cap.isOpened():
         ret, frame = cap.read()
@@ -132,20 +131,14 @@ def visualize_hits_in_video(video_path, timeline, output_path=None):
             break
         
         # Check if this frame has a hit
-        if current_frame in hit_frames:
-            stroke = hit_frames[current_frame]
-            timestamp = f"{int(current_frame/fps/60):02d}:{int(current_frame/fps)%60:02d}.{int((current_frame/fps%1)*1000):03d}"
-            hit_text = f"{timestamp} - {stroke}"
-            active_hits.append((hit_text, int(fps * 3)))  # Display for 3 seconds
-        
-        # Draw active hits info
-        y_offset = 50
-        for i, (text, remaining) in enumerate(active_hits):
-            cv2.putText(frame, text, (50, y_offset + i*40), 
-                       cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
-        
-        # Update active hits (decrement display time)
-        active_hits = [(text, remain-1) for text, remain in active_hits if remain > 1]
+        if current_frame in event_dict:
+            stroke = event_dict[current_frame]
+
+            if stroke == '未知球種':
+                cv2.putText(frame, "??", (50, 80), cv2.FONT_HERSHEY_SIMPLEX, 
+                        2, (0, 0, 255), 4, cv2.LINE_AA)
+            else:
+                frame = draw_chinese_text(frame, f'{stroke}', position=(50, 50))
         
         # Write the frame to output video
         out.write(frame)
@@ -225,3 +218,48 @@ def print_execution_time_with_plot(logs: Dict[str, datetime], video_dir: Path):
     plt.tight_layout()
     plt.savefig(video_dir / "execution_time_proportion.png")
     plt.close()
+
+def merge_consecutuve_frame(df_events):
+    '''
+    If the hit frames are consecutive, only count 1 hit event.
+    Remove the "unknown" stroke type then vote for the most frequent stroke type.
+    '''
+    start_frame, end_frame, stroke, player = [], [], [], []
+    cur_start_frame, prev_frame = -1, -1
+    cur_stroke, cur_player = [], []
+
+    for i, row in df_events.iterrows():
+        frame_idx = int(row['frame'])
+        if cur_start_frame == -1:
+            cur_start_frame = frame_idx
+            if row['stroke'] != '未知球種':
+                cur_stroke.append(row['stroke'])
+                cur_player.append(row['player'])
+            prev_frame = frame_idx
+
+        elif frame_idx == prev_frame + 1:
+            if row['stroke'] != '未知球種':
+                cur_stroke.append(row['stroke'])
+                cur_player.append(row['player'])
+            prev_frame = frame_idx
+
+        else:
+            start_frame.append(cur_start_frame)
+            end_frame.append(prev_frame)
+            
+            if not cur_stroke:
+                stroke.append('未知球種')
+                player.append('X')
+            else:
+                stroke.append(max(set(cur_stroke), key=cur_stroke.count))
+                player.append(max(set(cur_player), key=cur_player.count))
+            
+            cur_start_frame = frame_idx
+            cur_stroke = [row['stroke']] if row['stroke'] != '未知球種' else []
+            cur_player = [row['player']] if row['stroke'] != '未知球種' else []
+            prev_frame = frame_idx
+
+    df_merged_events = pd.DataFrame({'start_frame': start_frame, 'end_frame': end_frame,'stroke': stroke, 'player': player})
+    df_stroke_count = df_merged_events.groupby('stroke')['start_frame'].count().reset_index(name='count')
+
+    return df_merged_events, df_stroke_count

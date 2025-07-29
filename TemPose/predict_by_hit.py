@@ -34,13 +34,13 @@ def per_hit_predict(model, clip_dir: Path, hit_csv: Path, cfg: dict, device: tor
     strokes = []
 
     for i, hf in enumerate(hit_frames):
-        relateive_frame = hf - first_frame_num
+        relative_frame = hf - first_frame_num
 
-        seg_hp  = slice_and_pad(hp[0].cpu().numpy(),  relateive_frame, T)[None]   # (1, T, 2, J+B, 2)
-        seg_pos = slice_and_pad(pos[0].cpu().numpy(), relateive_frame, T)[None]   # (1, T, 2, 2)
-        seg_sh  = slice_and_pad(sh[0].cpu().numpy(),  relateive_frame, T)[None]   # (1, T, 2)
+        seg_hp  = slice_and_pad(hp[0].cpu().numpy(),  relative_frame, T)[None]   # (1, T, 2, J+B, 2)
+        seg_pos = slice_and_pad(pos[0].cpu().numpy(), relative_frame, T)[None]   # (1, T, 2, 2)
+        seg_sh  = slice_and_pad(sh[0].cpu().numpy(),  relative_frame, T)[None]   # (1, T, 2)
 
-        valid_len = min(T, hp.shape[1] - max(0, relateive_frame - T//2))
+        valid_len = min(T, hp.shape[1] - max(0, relative_frame - T//2))
         t_pad = torch.tensor([valid_len], device=device)
 
         x = torch.tensor(seg_hp,  dtype=torch.float32, device=device)
@@ -54,11 +54,11 @@ def per_hit_predict(model, clip_dir: Path, hit_csv: Path, cfg: dict, device: tor
         # print("P: ", p.shape)   # (1, 30, 4)
         # print("S: ", s.shape)   # (1, 30, 2)
 
-        sp = torch.cat([s, p], dim=-1)  # (b, t, 6)
+        sp = torch.cat([p, s], dim=-1)  # (b, t, 6)
 
         b,t,m,j,d = x.shape
         x = x.view(b, t, m, j*d)
-        sp = sp.view(b, t, -1)
+        # sp = sp.view(b, t, -1)
         
         with torch.no_grad():
             pred_idx = model.predict(x, sp, t_pad)

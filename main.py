@@ -21,7 +21,7 @@ from TemPose.TemPoseII        import TemPoseII_TF
 
 from team_classifier.sport_player_team_classifier import predict_teams, train_yolo
 
-from utils import frame_to_timestamp, visualize_hits_in_video, recording_execution_time, print_execution_time_with_plot, get_video_fps
+from utils import frame_to_timestamp, visualize_hits_in_video, recording_execution_time, print_execution_time_with_plot, get_video_fps, merge_consecutuve_frame
 
 def main():
     # ——— 0. Paths & config —————————————————————————————————————
@@ -33,7 +33,7 @@ def main():
     COURT_DET_EXE = 'court_detection/court-detection.exe'
     COURT_OUTPUT  = 'court_detection/court.txt'
     COURT_IMAGE   = 'court_detection/court_image.png'
-
+ 
     # take the correct fps
     fps = get_video_fps(str(video_path))
 
@@ -128,10 +128,10 @@ def main():
     model.eval()
 
     # Prepare containers for summarization
-    overall_counts = Counter()
     timeline       = []
     all_hit_frames = []
     all_strokes    = []
+    all_players    = []
 
     # For each clip: gen npy + per‐hit predict 
     for clip in sorted(os.listdir(RALLY_OUTPUT_DIR)):
@@ -182,7 +182,7 @@ def main():
             else:
                 true_player = None  # Unknown role
 
-            overall_counts[stroke] += 1
+            all_players.append(true_player)
 
             # TODO: visualize hits in video
             # Not use now
@@ -210,24 +210,23 @@ def main():
         print("\nNo hits detected across all clips.")
         return
     '''
-
+    # hit_frames & strokes & players
+    df_events = pd.DataFrame({"frame": all_hit_frames, "stroke": all_strokes, "player": all_players}).sort_values("frame").reset_index(drop=True)
+    df_merged_events, df_stroke_count = merge_consecutuve_frame(df_events)
+    
     # a) Stroke counts
-    df_counts = (
-        pd.DataFrame.from_records(
-            [{"stroke": s, "count": c} for s, c in overall_counts.items()]
-        )
-        .sort_values("stroke")
-        .reset_index(drop=True)
-    )
     print("\n=== Stroke counts ===")
-    for row in df_counts.itertuples(index=False):
+    for row in df_stroke_count.itertuples(index=False):
         print(f"{row.stroke:<20} {row.count:>5}")
 
     # b) Full hit timeline
-    # TODO: visualize hits in video
-    # Now we just output the hit timeline as a CSV
-
     output_video_dir = RESULT_OUTPUT_DIR
+    
+    # Optionally save CSVs:
+    df_stroke_count.to_csv(RESULT_OUTPUT_DIR / "summary_counts.csv", index=False)
+    df_merged_events.to_csv(RESULT_OUTPUT_DIR / "hit_events.csv",  index=False)
+
+    # Annotate video with hit events
     '''
     df_tl = pd.DataFrame(timeline)
     df_tl = df_tl.sort_values(["clip", "frame"]).reset_index(drop=True)
@@ -235,20 +234,11 @@ def main():
     print("  timestamp stroke")
     # for entry in timeline:
     #    print(f"{entry['timestamp']}   {entry['stroke']}")
-
+    '''
     print("\n[Message] Visualizing hits in video...")
     
     output_video_path = output_video_dir / f"{name}_annotated.mp4"
-    visualize_hits_in_video(video_path, timeline, output_path=output_video_path)
-    '''
-
-    # save all_events to a csv
-    # hit_frames & strokes
-    df_events = pd.DataFrame({"frame": all_hit_frames, "stroke": all_strokes}).sort_values("frame").reset_index(drop=True)
-    
-    # Optionally save CSVs:
-    df_counts.to_csv(RESULT_OUTPUT_DIR / "summary_counts.csv", index=False)
-    df_events.to_csv(RESULT_OUTPUT_DIR / "hit_events.csv",  index=False)
+    visualize_hits_in_video(video_path, df_events, output_path=output_video_path)
 
     #print(f"\n[Done] Summaries written to {RALLY_OUTPUT / 'summary_counts.csv'} and hit_timeline.csv")
     recording_execution_time(logs, "End Summarize")
