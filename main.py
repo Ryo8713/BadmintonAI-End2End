@@ -25,7 +25,7 @@ from utils import frame_to_timestamp, visualize_hits_in_video, recording_executi
 
 def main():
     # ——— 0. Paths & config —————————————————————————————————————
-    video_path = Path('full_1.mp4')
+    video_path = Path('match1.mp4')
     name       = video_path.stem
     RALLY_OUTPUT_DIR = Path('videos') / name
     RESULT_OUTPUT_DIR = Path('results') / name
@@ -42,7 +42,7 @@ def main():
 
     # mkdir RESULT_OUTPUT_DIR
     os.makedirs(RESULT_OUTPUT_DIR, exist_ok = True)
-    
+    '''
     # ——— 1. Rally clipping ——————————————————————————————————————————————
     print("\n[Message] Start rally clipping\n")
     recording_execution_time(logs, "Start Rally Clipping")
@@ -104,7 +104,7 @@ def main():
         predict_teams(clip_dir, clip, classifier, draw)
     print("[Message] Team classification finished\n")
     recording_execution_time(logs, "End Team Classification")
-    
+    '''
     # ——— 6. TemPose  ——————————————————————————————————————
     # load model config
     print("\n[Message] Start TemPose\n")
@@ -238,7 +238,7 @@ def main():
     print("\n[Message] Visualizing hits in video...")
     
     output_video_path = output_video_dir / f"{name}_annotated.mp4"
-    visualize_hits_in_video(video_path, df_events, output_path=output_video_path)
+    visualize_hits_in_video(video_path, df_merged_events, output_path=output_video_path)
 
     #print(f"\n[Done] Summaries written to {RALLY_OUTPUT / 'summary_counts.csv'} and hit_timeline.csv")
     recording_execution_time(logs, "End Summarize")

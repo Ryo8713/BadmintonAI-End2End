@@ -7,17 +7,6 @@ from PIL import ImageFont, ImageDraw, Image
 import numpy as np
 import pandas as pd
 
-def draw_chinese_text(img, text, position, font_path='NotoSansTC-ExtraLight.ttf', font_size=24, color=(255, 0, 0)):
-    # 轉成 PIL Image
-    img_pil = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
-    draw = ImageDraw.Draw(img_pil)
-    font = ImageFont.truetype(font_path, font_size)
-
-    draw.text(position, text, font=font, fill=color)
-    
-    # 轉回 OpenCV 格式
-    return cv2.cvtColor(np.array(img_pil), cv2.COLOR_RGB2BGR)
-
 def get_video_fps(video_path):
     cap = cv2.VideoCapture(video_path)
     fps = cap.get(cv2.CAP_PROP_FPS)
@@ -96,6 +85,17 @@ def frame_to_timestamp(video_file: Path, frame_idx: int, original_video_path: Pa
     
     return f"{int(h):02d}:{int(m):02d}:{int_s:02d}.{int(ms):06d}"
 
+def draw_chinese_text(img, text, position, font_path='font.ttf', font_size=24, color=(255, 255, 153)):
+    # 轉成 PIL Image
+    img_pil = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+    draw = ImageDraw.Draw(img_pil)
+    font = ImageFont.truetype(font_path, font_size)
+
+    draw.text(position, text, font=font, fill=color)
+    
+    # 轉回 OpenCV 格式
+    return cv2.cvtColor(np.array(img_pil), cv2.COLOR_RGB2BGR)
+
 def visualize_hits_in_video(video_path, df_events, output_path=None):
     """
     Annotate the original video with hit timestamps and stroke types.
@@ -123,22 +123,28 @@ def visualize_hits_in_video(video_path, df_events, output_path=None):
     progress_interval = max(1, total_frames // 100)  # Update progress every 1%
     
     current_frame = 0
-    event_dict = {int(row['frame']): row.get('stroke') for _, row in df_events.iterrows()}
-    
+    event_dict = {int(row['start_frame']): {'end_frame': int(row['end_frame']), 'stroke': row.get('stroke')} for _, row in df_events.iterrows()}
+    cur_start, cur_end = -1, -1
+    cur_stroke = ''
+
     while cap.isOpened():
         ret, frame = cap.read()
         if not ret:
             break
+
+        # Check if this frame is the start frame
+        if current_frame in event_dict:
+            cur_start, cur_end = current_frame, event_dict[current_frame]['end_frame']
+            cur_stroke = event_dict[current_frame]['stroke']
         
         # Check if this frame has a hit
-        if current_frame in event_dict:
-            stroke = event_dict[current_frame]
+        if current_frame >= cur_start and current_frame <= cur_end:
 
-            if stroke == '未知球種':
+            if cur_stroke == '未知球種':
                 cv2.putText(frame, "??", (50, 80), cv2.FONT_HERSHEY_SIMPLEX, 
                         2, (0, 0, 255), 4, cv2.LINE_AA)
             else:
-                frame = draw_chinese_text(frame, f'{stroke}', position=(50, 50))
+                frame = draw_chinese_text(frame, f'{cur_stroke}', position=(50, 50))
         
         # Write the frame to output video
         out.write(frame)
