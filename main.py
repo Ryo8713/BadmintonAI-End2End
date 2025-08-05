@@ -16,16 +16,16 @@ from MMPose.detect_pose        import process_pose
 from HitNet.predict           import predict as hitnet_detect
 
 from TemPose.generate_npy     import process_clip
-from TemPose.predict_by_hit   import per_hit_predict, slice_and_pad, get_stroke_types
+from TemPose.predict_by_hit   import per_hit_predict
 from TemPose.TemPoseII        import TemPoseII_TF
 
 from team_classifier.sport_player_team_classifier import predict_teams, train_yolo
 
-from utils import frame_to_timestamp, visualize_hits_in_video, recording_execution_time, print_execution_time_with_plot, get_video_fps, merge_consecutuve_frame
+from utils import *
 
 def main():
     # ——— 0. Paths & config —————————————————————————————————————
-    video_path = Path('match1.mp4')
+    video_path = Path('full_1.mp4')
     name       = video_path.stem
     RALLY_OUTPUT_DIR = Path('videos') / name
     RESULT_OUTPUT_DIR = Path('results') / name
@@ -33,7 +33,7 @@ def main():
     COURT_DET_EXE = 'court_detection/court-detection.exe'
     COURT_OUTPUT  = 'court_detection/court.txt'
     COURT_IMAGE   = 'court_detection/court_image.png'
- 
+
     # take the correct fps
     fps = get_video_fps(str(video_path))
 
@@ -42,7 +42,7 @@ def main():
 
     # mkdir RESULT_OUTPUT_DIR
     os.makedirs(RESULT_OUTPUT_DIR, exist_ok = True)
-    '''
+    
     # ——— 1. Rally clipping ——————————————————————————————————————————————
     print("\n[Message] Start rally clipping\n")
     recording_execution_time(logs, "Start Rally Clipping")
@@ -60,10 +60,11 @@ def main():
         with open(COURT_OUTPUT, 'w'):
             pass
     
-    # take the 50th frame of clip_7 as the input image for court detection
+    # take the 100th frame of clip_7 as the input image for court detection
+    ## this video is also used by the team classification
     clip_path = RALLY_OUTPUT_DIR / "clip_7" / f"clip_7.mp4"
     subprocess.run(
-        [COURT_DET_EXE, str(clip_path), COURT_OUTPUT, COURT_IMAGE, "50"], 
+        [COURT_DET_EXE, str(clip_path), COURT_OUTPUT, COURT_IMAGE, "100"], 
         capture_output=True, text=True
     )
     print("[Message] Court detection finished\n")
@@ -80,6 +81,8 @@ def main():
         start_frame_number = start_frame[clip]
 
         traj_csv = predict_traj(clip_path, str(clip_dir), track_model, start_frame_number=start_frame_number, verbose=False, draw=draw)
+
+        ## Consideration: unable smooth is acceptable
         # df       = pd.read_csv(traj_csv, encoding="utf-8")
         # smooth(traj_csv, df)
 
@@ -95,16 +98,19 @@ def main():
     recording_execution_time(logs, "End Hit Detection")
     
     # ——— 5. Team Classification ——————————————————————————————————————
+    ## Consideration: this video is also used by court detection
     print("\n[Message] Start team classification\n")
     recording_execution_time(logs, "Start Team Classification")
-    classifier = train_yolo(video_path)
+    clip_path = RALLY_OUTPUT_DIR / "clip_7" / f"clip_7.mp4"
+    classifier = train_yolo(clip_path)
     for clip in os.listdir(RALLY_OUTPUT_DIR):
         clip_dir = RALLY_OUTPUT_DIR / clip
         print(f"\n[Team] Processing {clip} …")
-        predict_teams(clip_dir, clip, classifier, draw)
+        start_frame_number = start_frame[clip]
+        predict_teams(clip_dir, clip, classifier, start_frame_number, draw)
     print("[Message] Team classification finished\n")
     recording_execution_time(logs, "End Team Classification")
-    '''
+    
     # ——— 6. TemPose  ——————————————————————————————————————
     # load model config
     print("\n[Message] Start TemPose\n")
@@ -150,41 +156,46 @@ def main():
         hit_frames, strokes = per_hit_predict(model, clip_dir, hit_csv, cfg, device)
 
         # accumulate
-        video_file = clip_dir / f"{clip}.mp4"
         team_file = Path(f"{clip}_teams.csv")
         team_path = clip_dir / team_file
+        top_bbox_file = clip_dir / f"{clip}_top_bbox.csv"
+        bottom_bbox_file = clip_dir / f"{clip}_bottom_bbox.csv"
 
         # Read team data and determine Top/Bottom mapping
         if team_path.exists():
             df_team = pd.read_csv(team_path)
+            df_top_bbox = pd.read_csv(top_bbox_file)
+            df_bottom_bbox = pd.read_csv(bottom_bbox_file)
 
-            # Assume y1 < y2 => player is on top (since y grows downward)
-            first_frame = df_team[df_team['frame'] == df_team['frame'].min()]
-            if first_frame.empty:
-                top_player = 0
-                bottom_player = 1
-            else:
-                top_player = first_frame.loc[first_frame['y1'].idxmin(), 'player_id']
-                bottom_player = first_frame.loc[first_frame['y1'].idxmax(), 'player_id']
         else:
-            print(f"[WARN] {team_path} not found; defaulting player0=Top, player1=Bottom")
-            top_player = 0
-            bottom_player = 1
+            print(f"[WARN] {team_path} not found")
 
-        for stroke in strokes:
+        for hit_frame, stroke in zip(hit_frames, strokes):
             # Map Top_ / Bottom_ to Player0_ / Player1_
-            if stroke.startswith("Top_"):
-                true_player = top_player
-                stroke = stroke.replace("Top_", f"Player{top_player}_")
-            elif stroke.startswith("Bottom_"):
-                true_player = bottom_player
-                stroke = stroke.replace("Bottom_", f"Player{bottom_player}_")
-            else:
-                true_player = None  # Unknown role
+            true_player = 'X'
+            if stroke != "未知球種":
+                bbox_stroke = None
+                if stroke.startswith("Top_"):
+                    x1, y1, x2, y2 = df_top_bbox.loc[df_top_bbox['frame'] == hit_frame, ['x1', 'y1', 'x2', 'y2']].values[0]
+                    bbox_stroke = (x1, y1, x2, y2)
+                elif stroke.startswith("Bottom_"):
+                    x1, y1, x2, y2 = df_bottom_bbox.loc[df_bottom_bbox['frame'] == hit_frame, ['x1', 'y1', 'x2', 'y2']].values[0]
+                    bbox_stroke = (x1, y1, x2, y2)
+
+                # Determine true player by checking bbox overlap
+                team_frame = df_team[df_team['frame'] == hit_frame]
+                best_iou = 0
+                for i, row in team_frame.iterrows():
+                    team_id = row['team_id']
+                    x1, y1, x2, y2 = row[['x1', 'y1', 'x2', 'y2']]
+                    bbox_player = (x1, y1, x2, y2)
+                    iou = calculate_iou(bbox_stroke, bbox_player)
+                    if iou > best_iou:
+                        true_player = team_id
+                        best_iou = iou
 
             all_players.append(true_player)
 
-            # TODO: visualize hits in video
             # Not use now
             '''
             ts = frame_to_timestamp(video_file, frame_idx, original_video_path=video_path)

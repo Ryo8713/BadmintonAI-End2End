@@ -56,7 +56,7 @@ def video_clipping(video_path, name, fps=30):
     def time_to_frame(time_str):
         hours, minutes, seconds = map(float, time_str.split(':'))
         total_seconds = hours * 3600 + minutes * 60 + seconds
-        return int(total_seconds * fps)
+        return int(round(total_seconds * fps))
 
     # Save clips in videos/{name}
     output_dir = Path(f'videos/{name}')
@@ -85,7 +85,9 @@ def video_clipping(video_path, name, fps=30):
     frame_start_number = {} 
 
     pbar = tqdm(total=len(time_points)-1, desc = 'Clipping Rallies')
-    for i in range(0, len(time_points)-1, 2):
+
+    ## Consideration: skip the first clip for full video
+    for i in range(2, len(time_points)-1, 2):
         start_time = time_points[i].strip()
         start_frame = time_to_frame(start_time)
         end_time = time_points[i + 1].strip()
@@ -141,32 +143,31 @@ def timepoints_clipping(video_path: Path, fps = 30):
     save_path = prediction_dir/(str(name)+'.txt')
     
     # Skip if save_path already exists
-    if save_path.exists():
+    if not save_path.exists():
         print(f"File {save_path} already exists. Skipping processing.")
-        return
-    
-    run_inference(video_path)
 
-    npy_dir = Path('rally_clipping/npy')
-    npy_file = npy_dir/(str(name)+'.npy')
+        run_inference(video_path)
 
-    print(f'File name: {npy_file}')
+        npy_dir = Path('rally_clipping/npy')
+        npy_file = npy_dir/(str(name)+'.npy')
 
-    model_preds = np.load(str(npy_file))
+        print(f'File name: {npy_file}')
 
-    print(f'Model Prediction: {model_preds}')
+        model_preds = np.load(str(npy_file))
 
-    points = determine_cut_points(
-        model_preds,
-        steep_th=0.25
-    )
+        print(f'Model Prediction: {model_preds}')
 
-    # Change to time string
-    frameNum_2_time_partial = partial(frameNum_2_time, fps=fps)
-    cut_point_time_strs = list(map(frameNum_2_time_partial, points))
+        points = determine_cut_points(
+            model_preds,
+            steep_th=0.25
+        )
 
-    with save_path.open('w', encoding='utf-8') as f:
-        f.write('\n'.join(cut_point_time_strs))
+        # Change to time string
+        frameNum_2_time_partial = partial(frameNum_2_time, fps=fps)
+        cut_point_time_strs = list(map(frameNum_2_time_partial, points))
+
+        with save_path.open('w', encoding='utf-8') as f:
+            f.write('\n'.join(cut_point_time_strs))
 
     videos_dir = Path('videos')
     if not videos_dir.is_dir():

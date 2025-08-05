@@ -23,7 +23,7 @@ def load_tracknet_model():
 def predict_traj(video_file: Path, save_dir: str, model, start_frame_number, verbose = False, draw = False):
 
     num_frame = 3
-    batch_size = 4
+    batch_size = 1
 
     video_name = video_file.stem
     video_format = video_file.suffix.lstrip('.')  # 'mp4'

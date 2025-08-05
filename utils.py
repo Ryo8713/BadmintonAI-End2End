@@ -236,6 +236,7 @@ def merge_consecutuve_frame(df_events):
 
     for i, row in df_events.iterrows():
         frame_idx = int(row['frame'])
+
         if cur_start_frame == -1:
             cur_start_frame = frame_idx
             if row['stroke'] != '未知球種':
@@ -262,10 +263,71 @@ def merge_consecutuve_frame(df_events):
             
             cur_start_frame = frame_idx
             cur_stroke = [row['stroke']] if row['stroke'] != '未知球種' else []
-            cur_player = [row['player']] if row['stroke'] != '未知球種' else []
+            cur_player = [row['player']]
             prev_frame = frame_idx
 
+    # The last event
+    start_frame.append(cur_start_frame)
+    end_frame.append(prev_frame)
+    if not cur_stroke:
+        stroke.append('未知球種')
+        player.append('X')
+    else:
+        stroke.append(max(set(cur_stroke), key=cur_stroke.count))
+        player.append(max(set(cur_player), key=cur_player.count))
+
+    assert len(start_frame) == len(end_frame) == len(stroke) == len(player), f'Start/End/Stroke/Player length mismatch: {len(start_frame)} vs {len(end_frame)} vs {len(stroke)} vs {len(player)}'
+
     df_merged_events = pd.DataFrame({'start_frame': start_frame, 'end_frame': end_frame,'stroke': stroke, 'player': player})
+
+    # merge again if 2 consecutive hits have the same stroke type & player
+    n = len(df_merged_events)
+    del_index = []
+
+    distance_threshold = 10  # 10 frames
+    for i in range(1, n):
+        if (
+            df_merged_events.loc[i, 'stroke'] == df_merged_events.loc[i - 1, 'stroke'] and
+            df_merged_events.loc[i, 'player'] == df_merged_events.loc[i - 1, 'player'] and
+            df_merged_events.loc[i, 'start_frame'] - df_merged_events.loc[i - 1, 'end_frame'] < distance_threshold
+        ):
+            df_merged_events.loc[i - 1, 'end_frame'] = df_merged_events.loc[i, 'end_frame']
+            del_index.append(i)
+
+    df_merged_events = df_merged_events.drop(del_index).reset_index(drop=True)
     df_stroke_count = df_merged_events.groupby('stroke')['start_frame'].count().reset_index(name='count')
 
     return df_merged_events, df_stroke_count
+
+def is_bbox_overlap(bbox1, bbox2):
+    x1_min, y1_min, x1_max, y1_max = bbox1
+    x2_min, y2_min, x2_max, y2_max = bbox2
+
+    # 判斷是否完全沒有交集
+    if x1_max <= x2_min or x2_max <= x1_min:
+        return False
+    if y1_max <= y2_min or y2_max <= y1_min:
+        return False
+
+    return True
+
+def calculate_iou(bbox1, bbox2):
+    x1_min, y1_min, x1_max, y1_max = bbox1
+    x2_min, y2_min, x2_max, y2_max = bbox2
+
+    # 計算交集面積
+    inter_w = max(0, min(x1_max, x2_max) - max(x1_min, x2_min))
+    inter_h = max(0, min(y1_max, y2_max) - max(y1_min, y2_min))
+    inter_area = inter_h * inter_w
+
+    # 計算各自面積
+    area1 = (x1_max - x1_min) * (y1_max - y1_min)
+    area2 = (x2_max - x2_min) * (y2_max - y2_min)
+
+    if area1 + area2 - inter_area == 0:
+        return 0.0
+
+    # 計算IOU
+    iou = inter_area / (area1 + area2 - inter_area)
+
+    return iou

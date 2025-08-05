@@ -23,6 +23,7 @@ def set_roi(x1, y1, x2, y2):
     global ROI_X1, ROI_Y1, ROI_X2, ROI_Y2
     ROI_X1, ROI_Y1, ROI_X2, ROI_Y2 = x1, y1, x2, y2
 
+## Consideration: Use the real corner coordinates as ROI
 def read_corner_set_roi(file_path):
 
     def parse_point(line_str):
@@ -54,6 +55,7 @@ def get_player_crops(model, video_path, stride=30):
             if conf < CONF_THRESH:
                 continue
             x1, y1, x2, y2 = map(int, xyxy)
+            # rint(f"[Debug] Frame {idx}: Object {xyxy} has confidence {conf}")
             if box_overlaps_roi(x1, y1, x2, y2):
                 crop = sv.crop_image(frame, xyxy)
                 crops.append(crop)
@@ -70,20 +72,21 @@ def draw_boxes(frame, detections, team_ids):
                         0.6, color, 2, cv2.LINE_AA)
     return frame
 
-def train_yolo(full_video_path):
+## Consideration: use the rally video instead of the full video
+def train_yolo(video_path):
     model = YOLO("team_classifier/yolov8s.pt").to(DEVICE)
-    classifier = TeamClassifier(device=DEVICE, batch_size=256)
+    classifier = TeamClassifier(device=DEVICE, batch_size=32)
 
     # Consider use the exact corner coordinates of each video
     read_corner_set_roi(COURT_FILE) 
 
-    crops = get_player_crops(model, full_video_path, stride=FRAME_STRIDE)
+    crops = get_player_crops(model, video_path, stride=FRAME_STRIDE)
     print(f"收集到 {len(crops)} 張人物圖像")
     classifier.fit(crops)
 
     return classifier
 
-def predict_teams(clip_dir, clip, classifier, draw = False):
+def predict_teams(clip_dir, clip, classifier, start_frame_number, draw = False):
     '''
     print("[1] 載入模型...")
     model = YOLO("yolov8s.pt").to(DEVICE)
@@ -112,7 +115,7 @@ def predict_teams(clip_dir, clip, classifier, draw = False):
         writer = cv2.VideoWriter(output_video_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (width, height))
 
     csv_rows = [["frame", "player_id", "x1", "y1", "x2", "y2", "team_id"]]
-    frame_idx = 0
+    frame_idx = start_frame_number
 
     while cap.isOpened():
         ret, frame = cap.read()

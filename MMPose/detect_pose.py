@@ -240,13 +240,12 @@ def read_court_corners(file_path):
             corners.append((x, y))
     
     if len(corners) == 4:
-        ordered_corners = [corners[0], corners[3], corners[1], corners[2]]  # Reorder to UL, UR, BL, BR
-        return np.array(ordered_corners, dtype=np.int32)
+        return np.array(corners, dtype=np.int32)
     else:
         print("Error: Could not read all 4 court corners.")
         return np.array(corners, dtype=np.int32)
 
-def is_inside_court(foot_positions, court_polygon, threshold=30):
+def is_inside_court(foot_positions, court_polygon, threshold=15):
     """Check if a player is inside the court based on their foot positions."""
     right_heel, left_heel = foot_positions
     
