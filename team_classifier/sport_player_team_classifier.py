@@ -11,7 +11,7 @@ VIDEO_PATH = r"sample.mp4"
 OUTPUT_VIDEO_PATH = r"box.mp4"
 CSV_PATH = r"box.csv"
 COURT_FILE = r"court_detection/court.txt"
-FRAME_STRIDE = 30
+FRAME_STRIDE = 32
 DEVICE = "cuda"
 FRAME_LIMIT = None  # 若要跑完整影片就設為 None
 BOX_COLORS = [(0, 0, 255), (255, 0, 0)]  # Team 0: red, Team 1: blue
@@ -44,7 +44,12 @@ def read_corner_set_roi(file_path):
 def box_overlaps_roi(x1, y1, x2, y2):
     return not (x2 < ROI_X1 or x1 > ROI_X2 or y2 < ROI_Y1 or y1 > ROI_Y2)
 
-def get_player_crops(model, video_path, stride=30):
+# avoid too small boxes such as rackets
+def test_box_area(x1, y1, x2, y2, threshold = 3000):
+    area = (x2 - x1) * (y2 - y1)
+    return area > threshold
+
+def get_player_crops(model, video_path, stride=32):
     crops = []
     frame_gen = sv.get_video_frames_generator(source_path=video_path, stride=stride)
     for idx, frame in enumerate(frame_gen):
@@ -56,7 +61,7 @@ def get_player_crops(model, video_path, stride=30):
                 continue
             x1, y1, x2, y2 = map(int, xyxy)
             # rint(f"[Debug] Frame {idx}: Object {xyxy} has confidence {conf}")
-            if box_overlaps_roi(x1, y1, x2, y2):
+            if box_overlaps_roi(x1, y1, x2, y2) and test_box_area(x1, y1, x2, y2):
                 crop = sv.crop_image(frame, xyxy)
                 crops.append(crop)
     return crops
@@ -72,18 +77,24 @@ def draw_boxes(frame, detections, team_ids):
                         0.6, color, 2, cv2.LINE_AA)
     return frame
 
-## Consideration: use the rally video instead of the full video
-def train_yolo(video_path):
+## Consideration: use the full video with fallback
+def train_yolo(video_path_1):
     model = YOLO("team_classifier/yolov8s.pt").to(DEVICE)
-    classifier = TeamClassifier(device=DEVICE, batch_size=32)
+    classifier = TeamClassifier(device=DEVICE, batch_size=256)
 
     # Consider use the exact corner coordinates of each video
     read_corner_set_roi(COURT_FILE) 
 
-    crops = get_player_crops(model, video_path, stride=FRAME_STRIDE)
-    print(f"收集到 {len(crops)} 張人物圖像")
-    classifier.fit(crops)
+    # fallback: randomly generate data again if crops < 3500
+    while 1:
+        crops = get_player_crops(model, video_path_1, stride=FRAME_STRIDE)
+        print(f"收集到 {len(crops)} 張人物圖像")
+        if len(crops) < 3500:
+            print("The data is not enough, randomly generate again")
+        else:
+            break
 
+    classifier.fit(crops)
     return classifier
 
 def predict_teams(clip_dir, clip, classifier, start_frame_number, draw = False):
@@ -130,7 +141,7 @@ def predict_teams(clip_dir, clip, classifier, start_frame_number, draw = False):
             if conf < CONF_THRESH:
                 continue
             x1, y1, x2, y2 = map(int, xyxy)
-            if box_overlaps_roi(x1, y1, x2, y2):
+            if box_overlaps_roi(x1, y1, x2, y2) and test_box_area(x1, y1, x2, y2):
                 valid_xyxy.append(xyxy)
 
         if valid_xyxy:

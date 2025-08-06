@@ -82,7 +82,11 @@ def video_clipping(video_path, name, fps=30):
     print(f"[Rally Clipping] Starts clipping video")
 
     clips = []
-    frame_start_number = {} 
+    frame_start_number = {}
+    longest_half1_clip_length = 0
+    longest_half1_clip = -1
+    longest_half2_clip_length = 0
+    longest_half_2clip = -1
 
     pbar = tqdm(total=len(time_points)-1, desc = 'Clipping Rallies')
 
@@ -95,6 +99,14 @@ def video_clipping(video_path, name, fps=30):
 
         if end_frame > total_frames:
             end_frame = total_frames
+
+        duration = end_frame - start_frame
+        if i+1 < 90 and duration > longest_half1_clip_length:
+            longest_half1_clip_length = duration
+            longest_half1_clip = i+1
+        elif i+1 >= 90 and duration > longest_half2_clip_length:
+            longest_half2_clip_length = duration
+            longest_half2_clip = i+1
 
         frame_start_number[f'clip_{i+1}'] = start_frame
 
@@ -124,7 +136,7 @@ def video_clipping(video_path, name, fps=30):
     pbar.close()
 
     print(f'[Rally Clipping] Clips saved to {output_dir}')
-    return frame_start_number
+    return frame_start_number, (f'clip_{longest_half1_clip}', f'clip_{longest_half2_clip}')
 
 
 def timepoints_clipping(video_path: Path, fps = 30):

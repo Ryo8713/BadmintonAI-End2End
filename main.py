@@ -20,7 +20,7 @@ from TemPose.predict_by_hit   import per_hit_predict
 from TemPose.TemPoseII        import TemPoseII_TF
 
 from team_classifier.sport_player_team_classifier import predict_teams, train_yolo
-
+ 
 from utils import *
 
 def main():
@@ -46,10 +46,11 @@ def main():
     # ——— 1. Rally clipping ——————————————————————————————————————————————
     print("\n[Message] Start rally clipping\n")
     recording_execution_time(logs, "Start Rally Clipping")
-    start_frame = timepoints_clipping(video_path, fps)
+    start_frame, longeset_clip = timepoints_clipping(video_path, fps)
+    print("The longest clip is: ", longeset_clip)
     print("[Message] Rally clipping finished\n")
     recording_execution_time(logs, "End Rally Clipping")
-    
+    '''
     # ——— 2. Court Detection ——————————————————————————————————————————
     print("\n[Message] Start court detection\n")  
     recording_execution_time(logs, "Start Court Detection")
@@ -96,18 +97,17 @@ def main():
     hitnet_detect(RALLY_OUTPUT_DIR, start_frame)
     print("[Message] Hit detection finished\n")
     recording_execution_time(logs, "End Hit Detection")
-    
+    '''
     # ——— 5. Team Classification ——————————————————————————————————————
-    ## Consideration: this video is also used by court detection
+    ## Consideration: choose the longest clip to train the team classifier, instead of clip 11 and 101
     print("\n[Message] Start team classification\n")
     recording_execution_time(logs, "Start Team Classification")
-    clip_path = RALLY_OUTPUT_DIR / "clip_7" / f"clip_7.mp4"
-    classifier = train_yolo(clip_path)
+    classifier = train_yolo(video_path  )
     for clip in os.listdir(RALLY_OUTPUT_DIR):
         clip_dir = RALLY_OUTPUT_DIR / clip
         print(f"\n[Team] Processing {clip} …")
         start_frame_number = start_frame[clip]
-        predict_teams(clip_dir, clip, classifier, start_frame_number, draw)
+        predict_teams(clip_dir, clip, classifier, start_frame_number, True )
     print("[Message] Team classification finished\n")
     recording_execution_time(logs, "End Team Classification")
     
