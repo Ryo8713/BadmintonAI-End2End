@@ -284,15 +284,31 @@ def merge_consecutuve_frame(df_events):
     n = len(df_merged_events)
     del_index = []
 
-    distance_threshold = 10  # 10 frames
+    def merge(i, stroke, player):
+        df_merged_events.loc[i - 1, 'end_frame'] = df_merged_events.loc[i, 'end_frame']
+        df_merged_events.loc[i - 1,'stroke'] = stroke
+        df_merged_events.loc[i - 1, 'player'] = player
+        del_index.append(i)
+
+    distance_threshold = 8  # 8 frames
     for i in range(1, n):
-        if (
-            df_merged_events.loc[i, 'stroke'] == df_merged_events.loc[i - 1, 'stroke'] and
-            df_merged_events.loc[i, 'player'] == df_merged_events.loc[i - 1, 'player'] and
-            df_merged_events.loc[i, 'start_frame'] - df_merged_events.loc[i - 1, 'end_frame'] < distance_threshold
-        ):
-            df_merged_events.loc[i - 1, 'end_frame'] = df_merged_events.loc[i, 'end_frame']
-            del_index.append(i)
+        if df_merged_events.loc[i, 'start_frame'] - df_merged_events.loc[i - 1, 'end_frame'] < distance_threshold:
+
+            stroke1, player1 = df_merged_events.loc[i - 1, ['stroke', 'player']]
+            stroke2, player2 = df_merged_events.loc[i, ['stroke', 'player']]
+
+            # merge for same stroke type
+            if stroke1 == stroke2:
+                duration1 = df_merged_events.loc[i - 1, 'end_frame'] - df_merged_events.loc[i - 1, 'start_frame']
+                duration2 = df_merged_events.loc[i, 'end_frame'] - df_merged_events.loc[i, 'start_frame']
+                player = player1 if duration1 > duration2 else player2
+                merge(i, stroke1, player)
+
+            # merge if one of them is "unknown"
+            elif stroke1 == '未知球種' or stroke2 == '未知球種':
+                stroke = stroke1 if stroke1 != '未知球種' else stroke2
+                player = player1 if player1 != 'X' else player2
+                merge(i, stroke, player)
 
     df_merged_events = df_merged_events.drop(del_index).reset_index(drop=True)
     df_stroke_count = df_merged_events.groupby('stroke')['start_frame'].count().reset_index(name='count')

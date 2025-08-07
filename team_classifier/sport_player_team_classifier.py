@@ -85,7 +85,7 @@ def train_yolo(video_path_1):
     # Consider use the exact corner coordinates of each video
     read_corner_set_roi(COURT_FILE) 
 
-    # fallback: randomly generate data again if crops < 3500
+    ## fallback: randomly generate data again if crops < 3500
     while 1:
         crops = get_player_crops(model, video_path_1, stride=FRAME_STRIDE)
         print(f"收集到 {len(crops)} 張人物圖像")
