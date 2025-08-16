@@ -20,12 +20,12 @@ from TemPose.predict_by_hit   import per_hit_predict
 from TemPose.TemPoseII        import TemPoseII_TF
 
 from team_classifier.sport_player_team_classifier import predict_teams, train_yolo
- 
+
 from utils import *
 
 def main():
     # ——— 0. Paths & config —————————————————————————————————————
-    video_path = Path('full_2.mp4')
+    video_path = Path('full_4.mp4')
     name       = video_path.stem
     RALLY_OUTPUT_DIR = Path('videos') / name
     RESULT_OUTPUT_DIR = Path('results') / name
@@ -101,7 +101,8 @@ def main():
     ## Consideration: choose the longest clip to train the team classifier, instead of clip 11 and 101
     print("\n[Message] Start team classification\n")
     recording_execution_time(logs, "Start Team Classification")
-    classifier = train_yolo(video_path)
+    clip_path = RALLY_OUTPUT_DIR / "clip_11" / f"clip_11.mp4"
+    classifier = train_yolo(RALLY_OUTPUT_DIR)
     for clip in os.listdir(RALLY_OUTPUT_DIR):
         clip_dir = RALLY_OUTPUT_DIR / clip
         print(f"\n[Team] Processing {clip} …")
@@ -117,6 +118,7 @@ def main():
     cfg = yaml.safe_load(Path("TemPose/config/config.yml").read_text())
     mcfg = cfg["model"]
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    
     model = TemPoseII_TF(
         poses_numbers=mcfg["input_dim"],
         time_steps=   mcfg["sequence_length"],
@@ -169,19 +171,23 @@ def main():
         else:
             print(f"[WARN] {team_path} not found")
 
+        
         for hit_frame, stroke in zip(hit_frames, strokes):
-            # Map Top_ / Bottom_ to Player0_ / Player1_
+
+            # Check the y1 of bbox to determine which team is at the top or bottom
             true_player = 'X'
+            first_frame = df_team[df_team['frame'] == df_team['frame'].min()]
+            top_player = first_frame.loc[first_frame['y1'].idxmin(), 'team_id']
+            bottom_player = first_frame.loc[first_frame['y1'].idxmax(), 'team_id']
             if stroke != "未知球種":
                 bbox_stroke = None
                 if stroke.startswith("Top_"):
-                    x1, y1, x2, y2 = df_top_bbox.loc[df_top_bbox['frame'] == hit_frame, ['x1', 'y1', 'x2', 'y2']].values[0]
-                    bbox_stroke = (x1, y1, x2, y2)
+                    true_player = top_player
                 elif stroke.startswith("Bottom_"):
-                    x1, y1, x2, y2 = df_bottom_bbox.loc[df_bottom_bbox['frame'] == hit_frame, ['x1', 'y1', 'x2', 'y2']].values[0]
-                    bbox_stroke = (x1, y1, x2, y2)
+                    true_player = bottom_player
 
-                # Determine true player by checking bbox overlap
+                # Determine true player by IoU of bboxes
+                '''
                 team_frame = df_team[df_team['frame'] == hit_frame]
                 best_iou = 0
                 for i, row in team_frame.iterrows():
@@ -192,6 +198,7 @@ def main():
                     if iou > best_iou:
                         true_player = team_id
                         best_iou = iou
+                '''
 
             all_players.append(true_player)
 

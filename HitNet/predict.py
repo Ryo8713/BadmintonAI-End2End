@@ -11,7 +11,7 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 num_consec = 7 
 dim = 70
 batch_size = 4096
-threshold = 0.50
+threshold = 0.56
 
 MODEL_PATH = 'HitNet/hitnet_recall.pth'
 

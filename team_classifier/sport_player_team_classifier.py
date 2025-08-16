@@ -1,6 +1,7 @@
 import os
 import csv
 import cv2
+import random
 import numpy as np
 from ultralytics import YOLO
 import supervision as sv
@@ -49,6 +50,54 @@ def test_box_area(x1, y1, x2, y2, threshold = 3000):
     area = (x2 - x1) * (y2 - y1)
     return area > threshold
 
+def crop_upper_body(frame, xyxy, ratio=0.5):
+    """
+    從原始 bbox (xyxy) 中裁出上半身
+    ratio=0.5 表示只保留上半部 50%
+    """
+    x1, y1, x2, y2 = map(int, xyxy)
+    height = y2 - y1
+    upper_y2 = int(y1 + height * ratio)
+
+    # 防止 index 越界
+    upper_y2 = min(upper_y2, frame.shape[0])
+    x1 = max(x1, 0)
+    x2 = min(x2, frame.shape[1])
+
+    return frame[y1:upper_y2, x1:x2]
+
+def get_random_frames(video_path, total=20):
+    cap = cv2.VideoCapture(video_path)
+    frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    if frame_count == 0:
+        return []
+    chosen_frames = sorted(random.sample(range(frame_count), min(total, frame_count)))
+    frames = []
+    for f_idx in chosen_frames:
+        cap.set(cv2.CAP_PROP_POS_FRAMES, f_idx)
+        ret, frame = cap.read()
+        if ret:
+            frames.append(frame)
+    cap.release()
+    return frames
+
+def get_crops_from_rallies(model, rally_video_paths, frames_per_rally=30):
+    crops = []
+    for clip in os.listdir(rally_video_paths):
+        video_path = f'{rally_video_paths}/{clip}/{clip}.mp4'
+        frames = get_random_frames(video_path, total=frames_per_rally)
+        for frame in frames:
+            result = model(frame, imgsz=640, verbose=False)[0]
+            detections = sv.Detections.from_ultralytics(result)
+            for xyxy, conf in zip(detections.xyxy, detections.confidence):
+                if conf < CONF_THRESH:
+                    continue
+                x1, y1, x2, y2 = map(int, xyxy)
+                if box_overlaps_roi(x1, y1, x2, y2) and test_box_area(x1, y1, x2, y2):
+                    crop = sv.crop_image(frame, xyxy)
+                    crops.append(crop)
+    return crops
+
 def get_player_crops(model, video_path, stride=32):
     crops = []
     frame_gen = sv.get_video_frames_generator(source_path=video_path, stride=stride)
@@ -62,7 +111,7 @@ def get_player_crops(model, video_path, stride=32):
             x1, y1, x2, y2 = map(int, xyxy)
             # rint(f"[Debug] Frame {idx}: Object {xyxy} has confidence {conf}")
             if box_overlaps_roi(x1, y1, x2, y2) and test_box_area(x1, y1, x2, y2):
-                crop = sv.crop_image(frame, xyxy)
+                crop = crop_upper_body(frame, xyxy, ratio=0.6)
                 crops.append(crop)
     return crops
 
@@ -80,14 +129,14 @@ def draw_boxes(frame, detections, team_ids):
 ## Consideration: use the full video with fallback
 def train_yolo(video_path_1):
     model = YOLO("team_classifier/yolov8s.pt").to(DEVICE)
-    classifier = TeamClassifier(device=DEVICE, batch_size=256)
+    classifier = TeamClassifier(device=DEVICE, batch_size=1024)
 
     # Consider use the exact corner coordinates of each video
     read_corner_set_roi(COURT_FILE) 
 
     ## fallback: randomly generate data again if crops < 3500
     while 1:
-        crops = get_player_crops(model, video_path_1, stride=FRAME_STRIDE)
+        crops = get_crops_from_rallies(model, video_path_1, frames_per_rally=35)
         print(f"收集到 {len(crops)} 張人物圖像")
         if len(crops) < 3500:
             print("The data is not enough, randomly generate again")
