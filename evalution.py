@@ -309,7 +309,7 @@ def evaluate(prediction_df, truth_df, player_mapping, class_ls, k=1, save_path=N
     print(f"\tKL_B = {result_dict['KL_B']:.4f}, KL_B_baseline = {result_dict['KL_B_baseline']:.4f}")
 
 
-name = 'full_39'
+name = 'full_35'
 prediction_file = f'results/{name}/hit_events.csv'
 truth_file = f'ShuttleSet/{name}.csv'
 save_path = f'results/{name}'

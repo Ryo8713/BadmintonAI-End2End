@@ -26,14 +26,14 @@ from utils import *
 
 def main():
     # ——— 0. Paths & config —————————————————————————————————————
-    video_path = Path('full_39.mp4')
+    video_path = Path('full_38.mp4')
     name       = video_path.stem
     RALLY_OUTPUT_DIR = Path('videos') / name
     RESULT_OUTPUT_DIR = Path('results') / name
 
     COURT_DET_EXE = 'court_detection/court-detection.exe'
-    COURT_OUTPUT  = 'court_detection/court.txt'
-    COURT_IMAGE   = 'court_detection/court_image.png'
+    COURT_OUTPUT  = RALLY_OUTPUT_DIR / 'court.txt'
+    COURT_IMAGE   = RALLY_OUTPUT_DIR / 'court_image.png'
 
     # take the correct fps
     fps = get_video_fps(str(video_path))
@@ -61,8 +61,7 @@ def main():
         with open(COURT_OUTPUT, 'w'):
             pass
     
-    # take the 100th frame of clip_7 as the input image for court detection
-    ## this video is also used by the team classification
+    # take the random frame of clip_7 as the input image for court detection
     clip_path = RALLY_OUTPUT_DIR / "clip_7" / f"clip_7.mp4"
     flag = False
     while not flag:
@@ -83,6 +82,8 @@ def main():
     track_model = load_tracknet_model()
     inferencer = MMPoseInferencer('human', device='cuda')
     for clip in os.listdir(RALLY_OUTPUT_DIR):
+        if not clip.startswith("clip_"):
+            continue
         clip_dir  = RALLY_OUTPUT_DIR / clip
         clip_path = clip_dir / f"{clip}.mp4"
         start_frame_number = start_frame[clip]
@@ -111,10 +112,12 @@ def main():
     # clip_path = RALLY_OUTPUT_DIR / "clip_11" / f"clip_11.mp4"
     classifier = train_yolo(RALLY_OUTPUT_DIR)
     for clip in os.listdir(RALLY_OUTPUT_DIR):
+        if not clip.startswith("clip_"):
+            continue
         clip_dir = RALLY_OUTPUT_DIR / clip
         print(f"\n[Team] Processing {clip} …")
         start_frame_number = start_frame[clip]
-        predict_teams(clip_dir, clip, classifier, start_frame_number, True )
+        predict_teams(clip_dir, clip, classifier, start_frame_number, draw)
     print("[Message] Team classification finished\n")
     recording_execution_time(logs, "End Team Classification")
     '''
@@ -149,10 +152,12 @@ def main():
 
     # For each clip: gen npy + per‐hit predict 
     for clip in sorted(os.listdir(RALLY_OUTPUT_DIR)):
+        if not clip.startswith("clip_"):
+            continue
         clip_dir = RALLY_OUTPUT_DIR / clip
         print(f"\n[TemPose] Processing {clip} …")
         # ① generate all the .npy required for TemPose
-        process_clip(clip, str(clip_dir), T_max=mcfg["sequence_length"])
+        process_clip(clip, str(clip_dir), COURT_OUTPUT, T_max=mcfg["sequence_length"])
 
         # ② do per‐hit classification
         hit_csv = clip_dir / f"{clip}_hits.csv"

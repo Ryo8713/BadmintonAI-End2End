@@ -32,7 +32,7 @@ def compute_bones(kps, bones_idx):
     # 回傳 (T, B, 2)
     return np.stack([kps[:, j] - kps[:, i] for i, j in bones_idx], axis=1)
 
-def process_clip(clip_name, tempose_root, T_max=30):
+def process_clip(clip_name, tempose_root, court_txt, T_max=30):
     """
     tempose_root\
     clip_1\
@@ -55,7 +55,7 @@ def process_clip(clip_name, tempose_root, T_max=30):
     bottom_bbox = load_bbox(bottom_bbox_csv)
 
     # court info
-    court_info = get_court_info()
+    court_info = get_court_info(court_txt)
 
     # 只取 X,Y (第 2,3 欄)，正規化
     ball_df = pd.read_csv(ball_csv)

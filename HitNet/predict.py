@@ -25,6 +25,8 @@ def predict(rally_output_dir, start_frame, device=None):
     model.eval()
 
     for clip in os.listdir(rally_output_dir):
+        if not clip.startswith("clip_"):
+            continue
         clip_dir = f'{rally_output_dir}/{clip}/'
         # print(f"\n[HitNet] Processing {clip} ...")
         X = make_data_for_predict(clip_dir, clip)

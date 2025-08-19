@@ -55,7 +55,7 @@ def normalize_position(arr: np.ndarray, court_info: dict):
     y_normalized = (arr[:, :, 1] - y_mean) / y_dist + 0.5   # (T, 1)
     return np.stack((x_normalized, y_normalized), axis=-1)  # (T, 1, 2)
 
-def get_corner_camera(court_txt = 'court_detection/court.txt'):
+def get_corner_camera(court_txt):
     with open(court_txt, 'r') as f:
         lines = f.readlines()
     
@@ -70,7 +70,7 @@ def get_corner_camera(court_txt = 'court_detection/court.txt'):
     return corners
 
 
-def get_H(court_txt = 'court_detection/court.txt'):
+def get_H(court_txt):
     with open(court_txt, 'r') as f:
         lines = f.readlines()
 
@@ -104,12 +104,12 @@ def project(H: np.ndarray, P_prime: np.ndarray):
     P = P[:2, :] / P[-1, :]  # /= w
     return P
 
-def get_court_info():
+def get_court_info(court_txt):
     '''
     Get the homography matrix and the 4 corners of the court in the court coordinate corresponding to the video.
     '''
-    H = get_H()
-    corner_camera = get_corner_camera()
+    H = get_H(court_txt)
+    corner_camera = get_corner_camera(court_txt)
     corner_camera = convert_homogeneous(corner_camera)
 
     corner_court = project(H, corner_camera)
