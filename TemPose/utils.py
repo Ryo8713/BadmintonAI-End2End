@@ -113,12 +113,16 @@ def get_court_info():
     corner_camera = convert_homogeneous(corner_camera)
 
     corner_court = project(H, corner_camera)
+
+    xs = corner_court[0, :]
+    ys = corner_court[1, :]
+    
     return {
         'H': H,
-        'border_L': corner_court[0, 0],
-        'border_R': corner_court[0, 1],
-        'border_U': corner_court[1, 0],
-        'border_D': corner_court[1, 2],
+        'border_L': xs.min(),  
+        'border_R': xs.max(),  
+        'border_U': ys.min(),  
+        'border_D': ys.max(),  
     }
 
 def to_court_coordinate(

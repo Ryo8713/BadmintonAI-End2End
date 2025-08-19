@@ -2,6 +2,7 @@
 import os
 import subprocess
 import yaml
+import random
 import torch
 import pandas as pd
 from pathlib import Path
@@ -25,7 +26,7 @@ from utils import *
 
 def main():
     # ——— 0. Paths & config —————————————————————————————————————
-    video_path = Path('full_4.mp4')
+    video_path = Path('full_39.mp4')
     name       = video_path.stem
     RALLY_OUTPUT_DIR = Path('videos') / name
     RESULT_OUTPUT_DIR = Path('results') / name
@@ -42,16 +43,16 @@ def main():
 
     # mkdir RESULT_OUTPUT_DIR
     os.makedirs(RESULT_OUTPUT_DIR, exist_ok = True)
-    
+    '''
     # ——— 1. Rally clipping ——————————————————————————————————————————————
     print("\n[Message] Start rally clipping\n")
     recording_execution_time(logs, "Start Rally Clipping")
     start_frame = timepoints_clipping(video_path, fps)
     print("[Message] Rally clipping finished\n")
     recording_execution_time(logs, "End Rally Clipping")
-    
+    '''
     # ——— 2. Court Detection ——————————————————————————————————————————
-    print("\n[Message] Start court detection\n")  
+    print("\n[Message] Start court detection")  
     recording_execution_time(logs, "Start Court Detection")
 
     # check if the txt file to overwrite exists
@@ -63,13 +64,19 @@ def main():
     # take the 100th frame of clip_7 as the input image for court detection
     ## this video is also used by the team classification
     clip_path = RALLY_OUTPUT_DIR / "clip_7" / f"clip_7.mp4"
-    subprocess.run(
-        [COURT_DET_EXE, str(clip_path), COURT_OUTPUT, COURT_IMAGE, "100"], 
-        capture_output=True, text=True
-    )
+    flag = False
+    while not flag:
+        frame_num = str(random.randint(50, 300))
+        subprocess.run(
+            [COURT_DET_EXE, str(clip_path), COURT_OUTPUT, COURT_IMAGE, frame_num], 
+            capture_output=True, text=True
+        )
+        flag = check_court_coordinates(COURT_OUTPUT)
+        if not flag:
+            print(f"[WARN] Court detection failed; retrying. (random frame number = {frame_num})")
     print("[Message] Court detection finished\n")
     recording_execution_time(logs, "End Court Detection")
-    
+    '''
     # ——— 3. Trajectory & Pose Prediction —————————————————————————————————————
     print("\n[Message] Start trajectory & pose prediction\n")
     recording_execution_time(logs, "Start Trajectory & Pose Prediction")
@@ -101,7 +108,7 @@ def main():
     ## Consideration: choose the longest clip to train the team classifier, instead of clip 11 and 101
     print("\n[Message] Start team classification\n")
     recording_execution_time(logs, "Start Team Classification")
-    clip_path = RALLY_OUTPUT_DIR / "clip_11" / f"clip_11.mp4"
+    # clip_path = RALLY_OUTPUT_DIR / "clip_11" / f"clip_11.mp4"
     classifier = train_yolo(RALLY_OUTPUT_DIR)
     for clip in os.listdir(RALLY_OUTPUT_DIR):
         clip_dir = RALLY_OUTPUT_DIR / clip
@@ -110,7 +117,7 @@ def main():
         predict_teams(clip_dir, clip, classifier, start_frame_number, True )
     print("[Message] Team classification finished\n")
     recording_execution_time(logs, "End Team Classification")
-    
+    '''
     # ——— 6. TemPose  ——————————————————————————————————————
     # load model config
     print("\n[Message] Start TemPose\n")
@@ -159,18 +166,11 @@ def main():
         # accumulate
         team_file = Path(f"{clip}_teams.csv")
         team_path = clip_dir / team_file
-        top_bbox_file = clip_dir / f"{clip}_top_bbox.csv"
-        bottom_bbox_file = clip_dir / f"{clip}_bottom_bbox.csv"
+        ball_file = clip_dir / f"{clip}_ball.csv"
 
         # Read team data and determine Top/Bottom mapping
-        if team_path.exists():
-            df_team = pd.read_csv(team_path)
-            df_top_bbox = pd.read_csv(top_bbox_file)
-            df_bottom_bbox = pd.read_csv(bottom_bbox_file)
-
-        else:
-            print(f"[WARN] {team_path} not found")
-
+        df_team = pd.read_csv(team_path)
+        df_ball = pd.read_csv(ball_file)
         
         for hit_frame, stroke in zip(hit_frames, strokes):
 
@@ -180,25 +180,29 @@ def main():
             top_player = first_frame.loc[first_frame['y1'].idxmin(), 'team_id']
             bottom_player = first_frame.loc[first_frame['y1'].idxmax(), 'team_id']
             if stroke != "未知球種":
-                bbox_stroke = None
                 if stroke.startswith("Top_"):
                     true_player = top_player
                 elif stroke.startswith("Bottom_"):
                     true_player = bottom_player
-
-                # Determine true player by IoU of bboxes
-                '''
+            else:
+                # Use ball to determine player if stroke is unknown
                 team_frame = df_team[df_team['frame'] == hit_frame]
-                best_iou = 0
+                ball_frame = df_ball[df_ball['Frame'] == hit_frame]
+                if len(ball_frame == 1):
+                    ball_frame = ball_frame.iloc[0]
+                    ball = (ball_frame['X'], ball_frame['Y'])
+                else:
+                    print(f"[WARN] Ball data not found for frame {hit_frame}; skipping.")
+                min_dist, best_match = 1000000, -1
                 for i, row in team_frame.iterrows():
                     team_id = row['team_id']
                     x1, y1, x2, y2 = row[['x1', 'y1', 'x2', 'y2']]
-                    bbox_player = (x1, y1, x2, y2)
-                    iou = calculate_iou(bbox_stroke, bbox_player)
-                    if iou > best_iou:
+                    bbox_team = (x1, y1, x2, y2)
+                    dist = calculate_ball_bbox_dist(ball, bbox_team)
+                    if dist < min_dist:
+                        min_dist = dist
                         true_player = team_id
-                        best_iou = iou
-                '''
+                # print(best_match)
 
             all_players.append(true_player)
 

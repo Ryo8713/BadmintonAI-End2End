@@ -98,7 +98,7 @@ def evaluate_event_level(prediction_df, truth_df, player_mapping, class_ls, save
         "skip_multi": {"count": skip_multi, "ratio": skip_multi / total_truth}
     }
     
-    # confusion matrix
+    # confusion matrix for 2 players
     conf = confusion_matrix(truth_labels, pred_labels, labels=event_classes)
     plt.figure(figsize=(12, 10))
     sns.heatmap(conf, annot=False, xticklabels=event_classes, yticklabels=event_classes, cmap="Blues")
@@ -309,7 +309,7 @@ def evaluate(prediction_df, truth_df, player_mapping, class_ls, k=1, save_path=N
     print(f"\tKL_B = {result_dict['KL_B']:.4f}, KL_B_baseline = {result_dict['KL_B_baseline']:.4f}")
 
 
-name = 'full_1'
+name = 'full_39'
 prediction_file = f'results/{name}/hit_events.csv'
 truth_file = f'ShuttleSet/{name}.csv'
 save_path = f'results/{name}'
@@ -319,9 +319,19 @@ truth_df = pd.read_csv(truth_file)
 # player mapping
 # In ShuttleSet, player A is the winner of set
 # Adjust this mapping to match your set
-player_mapping = {'0': 'A', '1': 'B', 'X': 'X'}
+# Here are some mapping used in evaluation (full_35 ~ full_39) for you to copy:
+player_mapping_dict = {
+    "full_35": {0: 'B', 1: 'A', 'X': 'X'},
+    "full_36": {0: 'A', 1: 'B', 'X': 'X'},
+    "full_37": {0: 'A', 1: 'B', 'X': 'X'},
+    "full_38": {0: 'A', 1: 'B', 'X': 'X'},
+    "full_39": {0: 'B', 1: 'A', 'X': 'X'}
+}
+
+# Otherwise modify the mapping here
+# player_mapping = {0: 'B', 1: 'A', 'X': 'X'}
 
 print("Video name:", name)
 print("==============================================================================")
-evaluate(prediction_df, truth_df, player_mapping, class_ls, k=1, save_path=save_path)
+evaluate(prediction_df, truth_df, player_mapping_dict[name], class_ls, k=1, save_path=save_path)
 print("==============================================================================")

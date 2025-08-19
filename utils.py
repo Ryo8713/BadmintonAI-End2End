@@ -241,13 +241,13 @@ def merge_consecutuve_frame(df_events):
             cur_start_frame = frame_idx
             if row['stroke'] != '未知球種':
                 cur_stroke.append(row['stroke'])
-                cur_player.append(row['player'])
+            cur_player.append(row['player'])
             prev_frame = frame_idx
 
         elif frame_idx == prev_frame + 1:
             if row['stroke'] != '未知球種':
                 cur_stroke.append(row['stroke'])
-                cur_player.append(row['player'])
+            cur_player.append(row['player'])
             prev_frame = frame_idx
 
         else:
@@ -256,10 +256,9 @@ def merge_consecutuve_frame(df_events):
             
             if not cur_stroke:
                 stroke.append('未知球種')
-                player.append('X')
             else:
                 stroke.append(max(set(cur_stroke), key=cur_stroke.count))
-                player.append(max(set(cur_player), key=cur_player.count))
+            player.append(max(set(cur_player), key=cur_player.count))
             
             cur_start_frame = frame_idx
             cur_stroke = [row['stroke']] if row['stroke'] != '未知球種' else []
@@ -271,10 +270,9 @@ def merge_consecutuve_frame(df_events):
     end_frame.append(prev_frame)
     if not cur_stroke:
         stroke.append('未知球種')
-        player.append('X')
     else:
         stroke.append(max(set(cur_stroke), key=cur_stroke.count))
-        player.append(max(set(cur_player), key=cur_player.count))
+    player.append(max(set(cur_player), key=cur_player.count))
 
     assert len(start_frame) == len(end_frame) == len(stroke) == len(player), f'Start/End/Stroke/Player length mismatch: {len(start_frame)} vs {len(end_frame)} vs {len(stroke)} vs {len(player)}'
 
@@ -344,3 +342,30 @@ def calculate_iou(bbox1, bbox2):
     iou = inter_area / (area1 + area2 - inter_area)
 
     return iou
+
+def calculate_ball_bbox_dist(ball, bbox):
+    x_ball, y_ball = ball
+    x1, y1, x2, y2 = bbox
+    bbox_center_x = (x1 + x2) / 2
+    bbox_center_y = (y1 + y2) / 2
+    dist = ((x_ball - bbox_center_x) ** 2 + (y_ball - bbox_center_y) ** 2)
+    return dist
+
+def check_court_coordinates(court_coordinates_file):
+    def parse_point(line_str):
+        x_str, y_str = line_str.split(';')
+        return float(x_str), float(y_str)
+    
+    with open(court_coordinates_file, 'r') as f:
+        lines = f.readlines()
+
+    TL, BL, BR, TR = lines[0].strip(), lines[1].strip(), lines[2].strip(), lines[3].strip()
+    TL_x, TL_y = parse_point(TL)
+    BL_x, BL_y = parse_point(BL)
+    TR_x, TR_y = parse_point(TR)
+    BR_x, BR_y = parse_point(BR)
+
+    if TL_x > TR_x or BL_x > BR_x or TL_y > BL_y or TR_y > BR_y:
+        return False
+    
+    return True
