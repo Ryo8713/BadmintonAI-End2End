@@ -26,7 +26,7 @@ from utils import *
 
 def main():
     # ——— 0. Paths & config —————————————————————————————————————
-    video_path = Path('full_38.mp4')
+    video_path = Path('full_36.mp4')
     name       = video_path.stem
     RALLY_OUTPUT_DIR = Path('videos') / name
     RESULT_OUTPUT_DIR = Path('results') / name
@@ -43,14 +43,14 @@ def main():
 
     # mkdir RESULT_OUTPUT_DIR
     os.makedirs(RESULT_OUTPUT_DIR, exist_ok = True)
-    '''
+    
     # ——— 1. Rally clipping ——————————————————————————————————————————————
     print("\n[Message] Start rally clipping\n")
     recording_execution_time(logs, "Start Rally Clipping")
     start_frame = timepoints_clipping(video_path, fps)
     print("[Message] Rally clipping finished\n")
     recording_execution_time(logs, "End Rally Clipping")
-    '''
+    
     # ——— 2. Court Detection ——————————————————————————————————————————
     print("\n[Message] Start court detection")  
     recording_execution_time(logs, "Start Court Detection")
@@ -75,7 +75,7 @@ def main():
             print(f"[WARN] Court detection failed; retrying. (random frame number = {frame_num})")
     print("[Message] Court detection finished\n")
     recording_execution_time(logs, "End Court Detection")
-    '''
+    
     # ——— 3. Trajectory & Pose Prediction —————————————————————————————————————
     print("\n[Message] Start trajectory & pose prediction\n")
     recording_execution_time(logs, "Start Trajectory & Pose Prediction")
@@ -120,7 +120,7 @@ def main():
         predict_teams(clip_dir, clip, classifier, start_frame_number, draw)
     print("[Message] Team classification finished\n")
     recording_execution_time(logs, "End Team Classification")
-    '''
+    
     # ——— 6. TemPose  ——————————————————————————————————————
     # load model config
     print("\n[Message] Start TemPose\n")
@@ -198,6 +198,7 @@ def main():
                     ball = (ball_frame['X'], ball_frame['Y'])
                 else:
                     print(f"[WARN] Ball data not found for frame {hit_frame}; skipping.")
+                    continue
                 min_dist, best_match = 1000000, -1
                 for i, row in team_frame.iterrows():
                     team_id = row['team_id']

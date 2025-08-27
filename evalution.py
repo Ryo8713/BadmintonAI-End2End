@@ -62,7 +62,7 @@ def evaluate_event_level(prediction_df, truth_df, player_mapping, class_ls, save
             continue
         
         pred_match = pred_match.iloc[0]
-        pred_type = pred_match['stroke'].split('_')[1] if pred_match['stroke']!= '未知球種' else '未知球種'
+        pred_type = pred_match['stroke'].split('_')[1] if pred_match['stroke'] != '未知球種' else '未知球種'
         pred_player = player_mapping[pred_match['player']]
         
         # event-level label: player + stroke
@@ -97,21 +97,35 @@ def evaluate_event_level(prediction_df, truth_df, player_mapping, class_ls, save
         "skip_zero": {"count": skip_zero, "ratio": skip_zero / total_truth},
         "skip_multi": {"count": skip_multi, "ratio": skip_multi / total_truth}
     }
-    
-    # confusion matrix for 2 players
-    conf = confusion_matrix(truth_labels, pred_labels, labels=event_classes)
+
+    # transform player + stroke --> stroke
+    truth_stroke_labels = [t.split('_')[-1] for t in truth_labels]
+    pred_stroke_labels = [p.split('_')[-1] for p in pred_labels]
+    stroke_report = classification_report(
+        truth_stroke_labels, pred_stroke_labels,
+        labels=class_ls,
+        target_names=class_ls,
+        digits=4,
+        output_dict=True,
+        zero_division=0
+    )
+
+    # confusion matrix for stroke
+    conf = confusion_matrix(truth_stroke_labels, pred_stroke_labels, labels=class_ls)
     plt.figure(figsize=(12, 10))
-    sns.heatmap(conf, annot=False, xticklabels=event_classes, yticklabels=event_classes, cmap="Blues")
-    plt.title("Event-level Confusion Matrix")
+    sns.heatmap(conf, annot=False, xticklabels=class_ls, yticklabels=class_ls, cmap="Blues")
+    plt.title("Stroke-type Confusion Matrix")
     if save_path:
-        plt.savefig(f"{save_path}/events_confusion_matrix.png")
+        plt.savefig(f"{save_path}/stroke_confusion_matrix.png")
     else:
         plt.show()
     
     # save classification report
     report_df = pd.DataFrame(report).transpose()
+    stroke_report_df = pd.DataFrame(stroke_report).transpose()
     if save_path:
         report_df.to_csv(f"{save_path}/events_classification_report.csv")
+        stroke_report_df.to_csv(f"{save_path}/stroke_classification_report.csv")
     
     return report, accuracy, macro_f1, skip_stats
 
@@ -181,7 +195,7 @@ def evaluate_hit_detection(prediction_df, truth_df, k=1, save_path=None):
     # confusion matrix
     conf = [[TP, FP], [FN, TN]]
     plt.figure(figsize=(12, 10))
-    sns.heatmap(conf, annot=True, xticklabels=['TP', 'FP'], yticklabels=['FN', 'TN'], cmap="Blues", fmt='d')
+    sns.heatmap(conf, annot=True, xticklabels=['TP', 'FP'], yticklabels=['FN', 'TN'], cmap="Blues", fmt='d', annot_kws={"size": 20})
     plt.title(f"Hit-event Confusion Matrix (k={k})")
     if save_path:
         plt.savefig(f"{save_path}/hit_events_confusion_matrix.png")
@@ -309,7 +323,7 @@ def evaluate(prediction_df, truth_df, player_mapping, class_ls, k=1, save_path=N
     print(f"\tKL_B = {result_dict['KL_B']:.4f}, KL_B_baseline = {result_dict['KL_B_baseline']:.4f}")
 
 
-name = 'full_35'
+name = 'full_39'
 prediction_file = f'results/{name}/hit_events.csv'
 truth_file = f'ShuttleSet/{name}.csv'
 save_path = f'results/{name}'
@@ -319,7 +333,7 @@ truth_df = pd.read_csv(truth_file)
 # player mapping
 # In ShuttleSet, player A is the winner of set
 # Adjust this mapping to match your set
-# Here are some mapping used in evaluation (full_35 ~ full_39) for you to copy:
+# Here are some mapping used in evaluation (full_35 ~ full_39)
 player_mapping_dict = {
     "full_35": {0: 'B', 1: 'A', 'X': 'X'},
     "full_36": {0: 'A', 1: 'B', 'X': 'X'},
